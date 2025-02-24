@@ -66,9 +66,9 @@ const GameCanvas = ({ imageSrc, imagePosition = { x: 0, y: 0 }, setImagePosition
                     <KonvaImage
                         ref={shadowRef}
                         image={image}
-                        x={200}
+                        x={10}
                         y={200}
-                        opacity={0.5}
+                        opacity={0.3}
                         filters={[Konva.Filters.Grayscale, Konva.Filters.Blur]}
                     />
                 )}
