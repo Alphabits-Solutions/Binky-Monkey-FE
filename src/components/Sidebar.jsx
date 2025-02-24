@@ -11,8 +11,8 @@ const Sidebar = () => {
         <ListItem button component={Link} to="/Image-upload">
           <ListItemText primary="Image Upload" />
         </ListItem>
-        <ListItem button component={Link} to="/3d-image">
-          <ListItemText primary="3D Image" />
+        <ListItem button component={Link} to="/assignment">
+          <ListItemText primary="Assignment" />
         </ListItem>
       </List>
     </div>
