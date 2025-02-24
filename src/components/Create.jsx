@@ -33,7 +33,7 @@ const Create = () => {
             const response = await axios.post("http://localhost:5000/assignment", gameData);
             if (response.data.success) {
                 alert("Game saved successfully!");
-                navigate("/"); // Redirect to home page or assignments list
+                navigate("/");
             } else {
                 alert("Failed to save game.");
             }
