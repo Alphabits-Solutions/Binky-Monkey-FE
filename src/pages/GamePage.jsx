@@ -1,28 +1,42 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import GameCanvas from "../components/Gamecanvas";
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:5000");
 
 const GamePage = () => {
-  const { state } = useLocation();
-  const assignment = state?.assignment;
+  const [assignment, setAssignment] = useState(null);
 
-  if (!assignment) {
-    return <div>No game selected</div>;
-  }
+  useEffect(() => {
+    socket.on("load_assignment", (data) => {
+      console.log("📩 Received assignment:", data);
+      setAssignment(data);
+    });
+
+    return () => {
+      socket.off("load_assignment");
+    };
+  }, []);
 
   return (
     <div>
-      <h1>{assignment.name}</h1>
-      {assignment.objects.map((obj, index) => (
-        <GameCanvas
-          key={index}
-          imageSrc={obj.imageSrc}
-          imagePosition={obj.position}
-          setImagePosition={(newPos) => {
-            console.log("New position:", newPos);
-          }}
-        />
-      ))}
+      {assignment ? (
+        <div>
+          <h2>{assignment.name}</h2>
+          {assignment.objects.map((obj, index) => (
+            <GameCanvas
+              key={index}
+              imageSrc={obj.imageSrc}
+              initialPosition={obj.position}
+              shadowPosition={obj.shadowPosition} // ✅ Pass shadowPosition here
+              socket={socket}
+            />
+          ))}
+        </div>
+      ) : (
+        <h2>Waiting for assignment...</h2>
+      )}
     </div>
   );
 };
