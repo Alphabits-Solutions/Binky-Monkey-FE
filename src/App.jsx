@@ -6,11 +6,13 @@ import Create from "./components/Create";
 import Assignment from "./pages/Assignment";
 import ClientRender from "./pages/ClientRender";
 import GamePage from "./pages/GamePage";
+import Auth from "./pages/Auth";
 
 const App = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/auth" element={<Auth/>}/>
         <Route path="/" element={<Dashboard />}>
           <Route path="/Image-upload" element={<ImageUpload />} />
           <Route path="/assignment" element={<Assignment />} />
@@ -18,6 +20,7 @@ const App = () => {
           <Route path="/client" element={<ClientRender />} />
           <Route path="/game" element={<GamePage />} />
         </Route>
+        <Route path="*" element={<Auth/>}/>
       </Routes>
     </Router>
   );
