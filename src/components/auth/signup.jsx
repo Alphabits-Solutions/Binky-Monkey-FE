@@ -1,11 +1,24 @@
-import React from "react";
-import { Form, Input, Button, Typography, Card } from "antd";
+import { useState } from "react";
+import { Form, Input, Button, Typography, Card, message } from "antd";
+import { registerUser } from "../../services/api";
 
 const { Title } = Typography;
 
-const Signup = ({setSignup}) => {
-  const onFinish = (values) => {
-    console.log("Success:", values);
+const Signup = ({ setSignup }) => {
+  const [loading, setLoading] = useState(false);
+
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      const response = await registerUser(values);
+      console.log("first",response)
+      message.success(response.data.message);
+      setSignup(false);
+    } catch (error) {
+      message.error(error.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onFinishFailed = (errorInfo) => {
@@ -27,6 +40,16 @@ const Signup = ({setSignup}) => {
           layout="vertical"
         >
           <Form.Item
+            label="Full Name"
+            name="fullName"
+            rules={[
+              { required: true, message: "Please input your full name!" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
             label="Email"
             name="email"
             rules={[
@@ -35,20 +58,6 @@ const Signup = ({setSignup}) => {
             ]}
           >
             <Input type="email" />
-          </Form.Item>
-
-          <Form.Item
-            label="Phone Number"
-            name="phone"
-            rules={[
-              { required: true, message: "Please input your phone number!" },
-              {
-                pattern: /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/,
-                message: "Please enter a valid phone number!",
-              },
-            ]}
-          >
-            <Input addonBefore="+91" style={{ width: "100%" }} />
           </Form.Item>
 
           <Form.Item
@@ -82,7 +91,12 @@ const Signup = ({setSignup}) => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" className="login-button">
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="login-button"
+              loading={loading}
+            >
               Sign Up
             </Button>
           </Form.Item>
