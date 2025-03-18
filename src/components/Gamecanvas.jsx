@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
+import { useReactMediaRecorder } from 'react-media-recorder';
 
 const GameCanvas = ({ imageSrc, imagePosition = { x: 0, y: 0 }, setImagePosition }) => {
     const [image, setImage] = useState(null);
@@ -7,11 +8,35 @@ const GameCanvas = ({ imageSrc, imagePosition = { x: 0, y: 0 }, setImagePosition
     const shadowRef = useRef(null);
     const imageRef = useRef(null);
 
+    const {
+        startRecording,
+        stopRecording,
+        mediaBlobUrl
+    } = useReactMediaRecorder({ screen: true, video: true, audio: true });
+
     useEffect(() => {
         const img = new window.Image();
         img.src = imageSrc;
         img.onload = () => setImage(img);
     }, [imageSrc]);
+
+    const downloadVideo = async () => {
+        if (mediaBlobUrl) {
+            const response = await fetch(mediaBlobUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'gameplay.mp4';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            alert('Recording downloaded successfully!');
+        } else {
+            alert('No recording available for download.');
+        }
+    };
 
     const vibrate = (node) => {
         if (!node) return;
@@ -59,6 +84,10 @@ const GameCanvas = ({ imageSrc, imagePosition = { x: 0, y: 0 }, setImagePosition
     };
 
     return (
+        <div style={{ textAlign: 'center', margin: '20px' }}>
+        <button onClick={startRecording} style={{ margin: '5px' }}>Start Recording</button>
+        <button onClick={stopRecording} style={{ margin: '5px' }}>Stop Recording</button>
+        <button onClick={downloadVideo} style={{ margin: '5px' }}>Download Recording</button>
         <Stage width={window.innerWidth} height={window.innerHeight}>
             <Layer>
                 {/* Shadow */}
@@ -85,6 +114,7 @@ const GameCanvas = ({ imageSrc, imagePosition = { x: 0, y: 0 }, setImagePosition
                 )}
             </Layer>
         </Stage>
+        </div>
     );
 };
 
