@@ -14,11 +14,24 @@ import {
 } from "@mui/material";
 import axios from "axios";
 
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:5000");
+
 const ClientRender = () => {
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignments, setSelectedAssignments] = useState([]);
   const navigate = useNavigate();
+  const [assignmentId, setAssignmentId] = useState("");
 
+  const handleStartPresentation = () => {
+    console.log("Start Presentation", selectedAssignments[0]);
+
+    if (selectedAssignments) {
+      socket.emit("start_presentation", selectedAssignments[0]);
+      navigate("/game");
+    }
+  };
   useEffect(() => {
     fetchAssignments();
   }, []);
@@ -33,9 +46,9 @@ const ClientRender = () => {
   };
 
   const handleSelectAssignment = (assignmentId) => {
-    setSelectedAssignments(prevSelected => {
+    setSelectedAssignments((prevSelected) => {
       if (prevSelected.includes(assignmentId)) {
-        return prevSelected.filter(id => id !== assignmentId);
+        return prevSelected.filter((id) => id !== assignmentId);
       }
       return [...prevSelected, assignmentId];
     });
@@ -43,14 +56,14 @@ const ClientRender = () => {
 
   const handleStartGame = () => {
     const selectedAssignment = assignments.find(
-      a => a._id === selectedAssignments[0]
+      (a) => a._id === selectedAssignments[0]
     );
-    
+
     if (selectedAssignment) {
-      navigate("/game", { 
-        state: { 
-          assignment: selectedAssignment 
-        } 
+      navigate("/game", {
+        state: {
+          assignment: selectedAssignment,
+        },
       });
     }
   };
@@ -99,7 +112,8 @@ const ClientRender = () => {
         variant="contained"
         color="primary"
         disabled={selectedAssignments.length === 0}
-        onClick={handleStartGame}
+        // onClick={handleStartGame}
+        onClick={handleStartPresentation}
         style={{ marginTop: "16px" }}
       >
         Start Presentation

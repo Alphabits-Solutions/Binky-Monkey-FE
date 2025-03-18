@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import GameCanvas from "./Gamecanvas";
+import AssignmentCanvas from "./AssignmentCanvas"; // Use new canvas
 
 const Create = () => {
     const location = useLocation();
@@ -10,6 +10,7 @@ const Create = () => {
 
     const [imageSrc, setImageSrc] = useState(selectedImages.length > 0 ? selectedImages[0] : null);
     const [imagePosition, setImagePosition] = useState({ x: 50, y: 50 });
+    const [shadowPosition, setShadowPosition] = useState({ x: 200, y: 200 });
 
     const saveGame = async () => {
         const gameName = prompt("Enter a name for your game:");
@@ -23,8 +24,9 @@ const Create = () => {
             name: gameName,
             objects: [
                 {
-                    imageSrc: imageSrc,
+                    imageSrc,
                     position: imagePosition,
+                    shadowPosition, // Save shadow position
                 },
             ],
         };
@@ -47,10 +49,12 @@ const Create = () => {
         <div>
             <h1>Create Game</h1>
             {imageSrc && (
-                <GameCanvas
+                <AssignmentCanvas
                     imageSrc={imageSrc}
                     imagePosition={imagePosition}
                     setImagePosition={setImagePosition}
+                    shadowPosition={shadowPosition}
+                    setShadowPosition={setShadowPosition}
                 />
             )}
             <button onClick={saveGame}>Save Game</button>
