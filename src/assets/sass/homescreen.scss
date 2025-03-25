@@ -1,0 +1,88 @@
+.header {
+  display: flex;
+  justify-content: flex-end;
+  background-image: url("../backgrounds/homeheader.svg");
+  background-size: 100%;
+  background-repeat: no-repeat;
+  img {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    margin: auto;
+  }
+  // padding: 16px;
+}
+.main-content {
+    background: #f9f6f2;
+}
+
+.sidebar {
+    background: #ffffff;
+    padding:6px;
+    .menu{
+        margin-top: 2em;
+    }
+    .menuItem{
+        height: 6em;
+    }
+  }
+  
+  
+  
+  .content {
+    padding: 24px;
+    margin-top: 4em;
+    margin-left: 3em;
+  }
+  
+  .content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  
+  .title {
+    color: #7E2807;
+    font-size: 34px;
+    font-weight: 500;
+    margin-left: 1.5em;
+  }
+  
+  .create-btn {
+    background: #7e2907b7;
+    border: none;
+    font-weight: 700;
+    &:hover {
+        background:  #7e2907e6;
+      }
+    
+  }
+  
+  .activity-grid {
+    display: grid;
+    margin-top: 3em;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
+  }
+  
+  .activity-card {
+    // background: #f5ebe0;
+    background: #f9f6f2;
+    text-align: center;
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    transition: 0.3s;
+    &:hover {
+      background: #e0d4c66b;
+    }
+    font-size: 1em;
+    font-weight: 700;
+    color: black;
+  }
+  
+ 
+  
