@@ -1,4 +1,5 @@
 import { Layout, Menu, Button, Card} from "antd";
+
 import pages from "../assets/icons/pages.svg";
 import layer from "../assets/icons/layer.svg";
 import assets from "../assets/icons/assets.svg";
@@ -7,6 +8,8 @@ import objects from "../assets/icons/objects.svg";
 import more from "../assets/icons/more.svg";
 import folder from "../assets/icons/folder.svg";
 import "../assets/sass/homescreen.scss";
+import { Link } from "react-router-dom";
+import Navbar from "../components/home/header";
 
 const { Header, Content, Sider } = Layout;
 
@@ -23,7 +26,9 @@ const activities = [
 const HomeScreen = () => {
   return (
     <Layout style={{ minHeight: "100vh" }}>
-        <Header className="header">
+        <Header className="header" >
+
+        <Navbar />
 
         </Header>
 
@@ -57,9 +62,11 @@ const HomeScreen = () => {
         <Content className="content">
           <div className="content-header">
             <h2 className="title">Activity file</h2>
+            <Link to="/create">
             <Button type="color" className="create-btn">
-              Create New Activity
+            Create New Activity
             </Button>
+            </Link>
           </div>
 
           {/* Activity Grid */}

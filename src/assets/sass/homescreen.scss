@@ -1,19 +1,37 @@
 .header {
-  display: flex;
-  justify-content: flex-end;
-  background-image: url("../backgrounds/homeheader.svg");
-  background-size: 100%;
-  background-repeat: no-repeat;
-  img {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    left: 0;
-    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 10px 10px;
+    height: 5em;
+    width: 100%;
+  
+  
+    .logo {
+      display: flex;
+      align-items: center;
+      margin-top: 2em;
+      
+      img {
+        height: 90px;
+        cursor: pointer;
+      }
+    }
+  
+    .profile {
+      display: flex;
+      align-items: center;
+      
+      
+      .avatar {
+        
+        border-radius: 50%;
+        cursor: pointer;
+        object-fit: cover;
+      }
+    }
   }
-  // padding: 16px;
-}
 .main-content {
     background: #f9f6f2;
 }
