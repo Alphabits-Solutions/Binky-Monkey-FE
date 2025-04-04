@@ -30,8 +30,8 @@ const items = [
 const App = () => (
   <Dropdown menu={{ items }}>
     <a onClick={e => e.preventDefault()}>
-    <Avatar
-          src="https://randomuser.me/api/portraits/women/44.jpg"
+    <Avatar className='avatar'
+          src="src\assets\icons\user.svg"
           style={{ cursor: "pointer" }}
         />
         <Space>
