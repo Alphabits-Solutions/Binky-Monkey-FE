@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Access environment variables correctly
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-const API_ASSET_URL= "http://localhost:8000/asset";
+const API_ASSET_URL= "/asset";
 const API_AUDIO_URL= "http://localhost:8000/audio";
 
 const api = axios.create({
@@ -39,7 +39,7 @@ export const uploadAsset = async (file) => {
   formData.append("file", file);
 
   try {
-    const response = await axios.post(API_ASSET_URL, formData, {
+    const response = await axios.post(`${API_BASE_URL}${API_ASSET_URL}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
@@ -52,7 +52,7 @@ export const uploadAsset = async (file) => {
 
 export const getAllAssets = async () => {
   try {
-    const response = await axios.get(API_ASSET_URL);
+    const response = await axios.get(`${API_BASE_URL}${API_ASSET_URL}`);
     return response.data.files;
   } catch (error) {
     console.error("Error fetching files:", error);
@@ -68,6 +68,15 @@ export const getAllAudios = async () => {
     console.error("Error fetching audios:", error);
     return [];
   }
+};
+
+// services/api.js
+export const deleteAsset = async (id) => {
+  const response = await axios.delete(`${API_BASE_URL}${API_ASSET_URL}/${id}`);
+  if (!response.status == 200) {
+    throw new Error("Failed to delete asset");
+  }
+  return response;
 };
 
 export const uploadAudio = async (file) => {

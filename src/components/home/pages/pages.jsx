@@ -5,10 +5,6 @@ import PagesSlide from "../pages/pageslide";
 const pages = () => {
   const [refresh, setRefresh] = useState(false);
 
-  // const handleUploadSuccess = () => {
-  //   setRefresh(!refresh);
-  // };
-
   return (
     
       <div className="file-list-section">
