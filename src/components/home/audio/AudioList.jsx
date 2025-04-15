@@ -21,6 +21,7 @@ const AudioList = () => {
       
       if (response && response.files && Array.isArray(response.files)) {
         setAudios(response.files);
+        fetchAudios();
       } else {
         setAudios([]);
         console.error("Unexpected API response format:", response);

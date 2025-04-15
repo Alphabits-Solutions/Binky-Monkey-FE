@@ -4,6 +4,7 @@ import axios from "axios";
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const API_ASSET_URL= "http://localhost:8000/asset";
 const API_AUDIO_URL= "http://localhost:8000/audio";
+const API_OBJECT_URL= "http://localhost:8000/object";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -70,12 +71,37 @@ export const getAllAudios = async () => {
   }
 };
 
+export const getAllObjects = async () => {
+  try {
+    const response = await axios.get(API_OBJECT_URL);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching audios:", error);
+    return [];
+  }
+};
+
 export const uploadAudio = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
   try {
     const response = await axios.post(API_AUDIO_URL, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Audio upload failed:", error);
+    throw error;
+  }
+};
+
+export const uploadObject = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await axios.post(API_OBJECT_URL, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;

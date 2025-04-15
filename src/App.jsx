@@ -28,7 +28,7 @@ const App = () => {
           <Route path="/layer" element={<Layers />} />
         <Route path="/asset" element={<Asset />} />
         <Route path="/audio" element={<Audio />} />
-        <Route path="object" element={<Object />} />
+        <Route path="/object" element={<Object />} />
         <Route path="more" element={<More />} />
         </Route>
         {/* <Route path="/" element={<Dashboard />} >

@@ -45,7 +45,7 @@ const RightSidebar = () => {
           </div>
         </div>
       </div>
-      <div className="color-section">
+      {/* <div className="color-section">
         <label>Color</label>
         <div className="color-picker">
           <input
@@ -93,7 +93,7 @@ const RightSidebar = () => {
             <img src={AudioAction} alt="Audio Action Icon" />
           </button>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

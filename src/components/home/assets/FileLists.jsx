@@ -41,6 +41,7 @@ const FileList = () => {
       const response = await uploadAsset(file);
       alert("File uploaded successfully!");
       setFiles((prevFiles) => [...prevFiles, response]); 
+      fetchFiles()
     } catch (error) {
       alert("Upload failed!");
     } finally {
@@ -72,7 +73,7 @@ const FileList = () => {
           <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
 
           {files
-            .filter((file) => file.filePath.match(/\.(jpeg|jpg|png|gif|webp)$/i))
+            .filter((file) => file.filePath?.match(/\.(jpeg|jpg|png|gif|webp)$/i))
             .map((file) => (
               <div key={file._id} className="file-card">
                 <img src={file.filePath} alt={file.fileName} />
@@ -90,7 +91,7 @@ const FileList = () => {
           <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
 
           {files
-            .filter((file) => file.filePath.match(/\.(mp4|webm|ogg)$/i))
+            .filter((file) => file.filePath?.match(/\.(mp4|webm|ogg)$/i))
             .map((file) => (
               <div key={file._id} className="file-card">
                 <video controls>

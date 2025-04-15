@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import AudioList from "../audio/AudioList";
+import ObjectList from "./ObjectList";
 
 
 const objects = () => {
@@ -13,7 +14,8 @@ const objects = () => {
     
       <div className="file-list-section">
        
-        <AudioList key={refresh} />
+        {/* <AudioList key={refresh} /> */}
+        <ObjectList key={refresh}/>
       </div>
 
   );
