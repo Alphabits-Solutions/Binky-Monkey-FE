@@ -1,6 +1,7 @@
-import React from 'react';
+
 import { DownOutlined, SettingOutlined } from '@ant-design/icons';
 import { Avatar, Dropdown, Space} from 'antd';
+import User from "../../assets/icons/user.svg";
 const items = [
   {
     key: '1',
@@ -31,7 +32,7 @@ const App = () => (
   <Dropdown menu={{ items }}>
     <a onClick={e => e.preventDefault()}>
     <Avatar className='avatar'
-          src="src\assets\icons\user.svg"
+          src={User}
           style={{ cursor: "pointer" }}
         />
         <Space>

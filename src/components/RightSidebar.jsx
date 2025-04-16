@@ -15,7 +15,7 @@ const RightSidebar = () => {
     setAssetPosition,
     assetSize,
     setAssetSize,
-  } = useContext(AppContext); // Destructure context values
+  } = useContext(AppContext); 
   const [fillColor, setFillColor] = useState("#861E00");
   const [strokeColor, setStrokeColor] = useState("#FFFFFF");
 
@@ -48,7 +48,7 @@ const RightSidebar = () => {
           <label>Position</label>
           <input
             type="text"
-            value={assetPosition?.x ?? 0} // Use optional chaining and fallback
+            value={assetPosition?.x ?? 0} 
             onChange={(e) => handlePositionChange(e, "x")}
             placeholder="X"
           />

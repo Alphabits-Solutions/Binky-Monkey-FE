@@ -1,15 +1,18 @@
 import { Layout } from "antd";
-import { Outlet } from "react-router-dom";
-import Sidebar from "../components/HomeSider";
+import { Outlet, useParams } from "react-router-dom";
+import LeftSidebar from "../components/LeftSider";
 import RightSidebar from "../components/RightSidebar";
 import Navbar from "../components/home/header";
 import "../assets/sass/homescreen.scss";
 import { useContext, useEffect, useRef, useState } from "react";
 import { AppContext } from "../context/AppContext";
+import Slide from "../components/home/pages/pages";
 
 const { Header, Content, Sider } = Layout;
 
 const DashboardLayout = () => {
+  const { activityId } = useParams();
+
   const {
     selectedPage,
     selectedAsset,
@@ -82,15 +85,18 @@ const DashboardLayout = () => {
       <Header className="header">
         <Navbar />
       </Header>
-      <Layout className="main-content">
-        {/* Ensure HomeSider is always visible */}
+      <Layout>
         <Sider width={100} className="sidebar" collapsible={false}>
-          <Sidebar />
+          <LeftSidebar />
         </Sider>
-        <RightSidebar />
+        
+      <Layout className="main-content">
         <Content className="content">
           <div className="asset-manager">
-            {selectedPage ? (
+          <div style={{ minWidth: "250px" }}>
+            <Slide />
+          </div>
+            {selectedPage && (
               <div style={{ position: "relative", width: 800, height: 600 }}>
                 <canvas
                   ref={canvasRef}
@@ -119,12 +125,18 @@ const DashboardLayout = () => {
                   />
                 )}
               </div>
-            ) : (
-              <Outlet />
-            )}
-          </div>
+              )}
+
+              <div style={{ flex: 1 }}>
+                <Outlet />
+              </div>
+            </div>
         </Content>
+          <RightSidebar />
       </Layout>
+      
+        
+    </Layout>
     </Layout>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { getAllAudios, uploadAudio } from "../../../services/api";
+import { getAllAudios, uploadAudio,deleteAudio } from "../../../services/api";
 
 const AudioList = () => {
   const [audios, setAudios] = useState([]);
@@ -97,6 +97,34 @@ const AudioList = () => {
                 Your browser does not support the audio element.
               </audio>
               <p>{audio.fileName || "Unnamed Audio"}</p>
+
+              <button
+      onClick={async () => {
+        const confirmDelete = window.confirm("Are you sure you want to delete this audio?");
+        if (!confirmDelete) return;
+
+        try {
+          await deleteAudio(audio._id);
+          alert("Audio deleted successfully!");
+          await fetchAudios(); 
+        } catch (error) {
+          console.error("Delete error:", error);
+          alert("Failed to delete audio.");
+        }
+      }}
+      style={{
+        marginTop: "8px",
+        padding: "6px 10px",
+        backgroundColor: "#e74c3c",
+        color: "#fff",
+        border: "none",
+        borderRadius: "4px",
+        cursor: "pointer",
+        fontSize: "12px",
+      }}
+    >
+      Delete
+    </button>
             </div>
           ))}
         </div>

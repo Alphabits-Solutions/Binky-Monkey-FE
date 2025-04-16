@@ -1,7 +1,7 @@
-import React from "react";
 import { Layout } from "antd";
 import ProfileDropdown from "../home/profileDropdown";
 import { Link } from "react-router-dom";
+import HeaderLogo from "../../assets/icons/headerlogo.svg";
 
 
 
@@ -12,7 +12,8 @@ const Navbar = () => {
     <Header className="header">
       <div className="logo">
         <Link to="/">
-          <img src="src\assets\icons\headerlogo.svg" alt="Binky Monkey" />
+        
+          <img src={HeaderLogo} alt="Binky Monkey" />
         </Link>
       </div>
       <ProfileDropdown />

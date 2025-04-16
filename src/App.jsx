@@ -21,18 +21,20 @@ const App = () => {
   return (
     <AppProvider>
       <Router>
-        <Routes>
-          {/* <Route path="/auth" element={<Auth/>}/> */}
-          <Route path="/" element={<HomeScreen />} />
+      <Routes>
+  
+  <Route path="/" element={<HomeScreen />} />
 
-          <Route path="/" element={<HomeDashboard />}>
-            <Route path="/pages" element={<Pages />} />
-            <Route path="/layer" element={<Layers />} />
-            <Route path="/asset" element={<Asset />} />
-            <Route path="/audio" element={<Audio />} />
-            <Route path="object" element={<Object />} />
-            <Route path="more" element={<More />} />
-          </Route>
+  
+  <Route path="/activity/:activityId" element={<HomeDashboard />}>
+    <Route path="page" element={<Pages />} />
+    <Route path="page/:pageId/layer" element={<Layers />} />
+    <Route path="asset" element={<Asset />} />
+    <Route path="audio" element={<Audio />} />
+    <Route path="object" element={<Object />} />
+    <Route path="more" element={<More />} />
+  </Route>
+
           {/* <Route path="/" element={<Dashboard />} >
           <Route path="/Image-upload" element={<ImageUpload />} />
           <Route path="/assignment" element={<Assignment />} />
