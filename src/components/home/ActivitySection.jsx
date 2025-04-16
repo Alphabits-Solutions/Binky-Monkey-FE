@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Button, Card, Dropdown, message } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import {AppContext} from "../../context/AppContext";
 
 import folder from "../../assets/icons/folder.svg";
 import {
@@ -15,6 +16,8 @@ const ActivitySection = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const {setSelectedActivity} = useContext(AppContext);
 
   useEffect(() => {
     fetchActivities();
@@ -55,7 +58,8 @@ const ActivitySection = () => {
   };
 
   const handleCardClick = (activityId) => {
-    navigate(`/activity/${activityId}/page`);
+    setSelectedActivity(activityId);
+    navigate(`/activity/${activityId}/asset`);
   };
 
   return (

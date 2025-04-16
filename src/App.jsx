@@ -1,49 +1,88 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-// import Dashboard from "./pages/Dashboard";
-// import ImageUpload from "./components/ImageUpload";
-// import Create from "./components/Create";
-// import Assignment from "./pages/Assignment";
-// import ClientRender from "./pages/ClientRender";
-// import GamePage from "./pages/GamePage";
-// import Auth from "./pages/Auth";
-import HomeScreen from "./pages/HomeScreen";
+import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Link } from "react-router-dom";
+import { Layout, Menu } from "antd";
+import ActivitySection from "./components/home/ActivitySection";
+import HomeDashboard from "./pages/HomeDashboard";
 import Pages from "./components/home/pages/pages";
 import Layers from "./components/home/layer/layer";
 import Asset from "./components/home/assets/assets";
 import Audio from "./components/home/audio/Audio";
 import Object from "./components/home/objects/objects";
 import More from "./components/home/more/more";
-import HomeDashboard from "./pages/HomeDashboard";
-import { AppProvider } from "./context/AppContext";
+import Navbar from "./components/home/header";
+import { AppProvider, AppContext } from "./context/AppContext";
+import { getSidebarItems } from "./sidebarItems";
+import "./assets/sass/homescreen.scss";
+
+const { Header, Content, Sider } = Layout;
+
+const AppLayout = () => {
+  const location = useLocation();
+  const { activityId, pageId } = useParams();
+  const { selectedPage, selectedActivity } = React.useContext(AppContext);
+  const isHomePage = location.pathname === "/";
+
+  const sidebarItems = getSidebarItems(selectedActivity || activityId || "", selectedPage || pageId || "1", pageId);
+
+  const getSelectedKey = () => {
+    const path = location.pathname;
+
+    const matchedItem = sidebarItems.find((item) => {
+      if (path === item.path) return true;
+      if (path.startsWith(item.path)) return true;
+      return false;
+    });
+
+    return matchedItem ? String(matchedItem.key) : "1";
+  };
+
+  return (
+    <Layout style={{ minHeight: "100vh" }}>
+      <Header className="header">
+        <Navbar />
+      </Header>
+      <Layout className="main-content">
+        {!isHomePage && (
+          <Sider width={100} className="sidebar">
+            <Menu
+              className="menu"
+              theme="light"
+              mode="vertical"
+              selectedKeys={[getSelectedKey()]}
+            >
+              {sidebarItems.map((item) => (
+                <Menu.Item key={item.key} className="menuItem">
+                  <Link to={item.path} aria-label={item.label}>
+                    <img src={item.icon} alt={item.label} />
+                  </Link>
+                </Menu.Item>
+              ))}
+            </Menu>
+          </Sider>
+        )}
+        <Content className="content">
+          <Routes>
+            <Route path="/" element={<ActivitySection />} />
+            <Route path="/activity/:activityId" element={<HomeDashboard />}>
+              <Route path="page" element={<Pages />} />
+              <Route path="layer" element={<Layers />} />
+              <Route path="asset" element={<Asset />} />
+              <Route path="audio" element={<Audio />} />
+              <Route path="object" element={<Object />} />
+              <Route path="more" element={<More />} />
+            </Route>
+          </Routes>
+        </Content>
+      </Layout>
+    </Layout>
+  );
+};
 
 const App = () => {
   return (
     <AppProvider>
       <Router>
-      <Routes>
-  
-  <Route path="/" element={<HomeScreen />} />
-
-  
-  <Route path="/activity/:activityId" element={<HomeDashboard />}>
-    <Route path="page" element={<Pages />} />
-    <Route path="page/:pageId/layer" element={<Layers />} />
-    <Route path="asset" element={<Asset />} />
-    <Route path="audio" element={<Audio />} />
-    <Route path="object" element={<Object />} />
-    <Route path="more" element={<More />} />
-  </Route>
-
-          {/* <Route path="/" element={<Dashboard />} >
-          <Route path="/Image-upload" element={<ImageUpload />} />
-          <Route path="/assignment" element={<Assignment />} />
-          <Route path="/create" element={<Create />} />
-          <Route path="/client" element={<ClientRender />} />
-          <Route path="/game" element={<GamePage />} />
-        </Route> */}
-          {/* <Route path="*" element={<Auth/>}/> */}
-        </Routes>
+        <AppLayout />
       </Router>
     </AppProvider>
   );

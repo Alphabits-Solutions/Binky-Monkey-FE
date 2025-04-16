@@ -1,18 +1,12 @@
-import { Layout } from "antd";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Outlet, useParams } from "react-router-dom";
-import LeftSidebar from "../components/LeftSider";
 import RightSidebar from "../components/RightSidebar";
-import Navbar from "../components/home/header";
-import "../assets/sass/homescreen.scss";
-import { useContext, useEffect, useRef, useState } from "react";
-import { AppContext } from "../context/AppContext";
 import Slide from "../components/home/pages/pages";
+import { AppContext } from "../context/AppContext";
+import "../assets/sass/homescreen.scss";
 
-const { Header, Content, Sider } = Layout;
-
-const DashboardLayout = () => {
+const HomeDashboard = () => {
   const { activityId } = useParams();
-
   const {
     selectedPage,
     selectedAsset,
@@ -81,64 +75,46 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Header className="header">
-        <Navbar />
-      </Header>
-      <Layout>
-        <Sider width={100} className="sidebar" collapsible={false}>
-          <LeftSidebar />
-        </Sider>
-        
-      <Layout className="main-content">
-        <Content className="content">
-          <div className="asset-manager">
-          <div style={{ minWidth: "250px" }}>
-            <Slide />
-          </div>
-            {selectedPage && (
-              <div style={{ position: "relative", width: 800, height: 600 }}>
-                <canvas
-                  ref={canvasRef}
-                  id="asset-canvas"
-                  width={800}
-                  height={600}
-                  style={{ border: "1px solid #ccc", background: "#fff" }}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                ></canvas>
-                {selectedAsset && selectedAsset.type === "video" && (
-                  <video
-                    controls
-                    src={selectedAsset.src}
-                    style={{
-                      position: "absolute",
-                      left: `${assetPosition.x}px`,
-                      top: `${assetPosition.y}px`,
-                      width: `${assetSize.width}px`,
-                      height: `${assetSize.height}px`,
-                    }}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                  />
-                )}
-              </div>
-              )}
-
-              <div style={{ flex: 1 }}>
-                <Outlet />
-              </div>
-            </div>
-        </Content>
-          <RightSidebar />
-      </Layout>
-      
-        
-    </Layout>
-    </Layout>
+    <div className="asset-manager">
+      <div style={{ minWidth: "250px" }}>
+        <Slide />
+      </div>
+      {selectedPage && (
+        <div style={{ position: "relative", width: 1100, height: 800 }}>
+          <canvas
+            ref={canvasRef}
+            id="asset-canvas"
+            width={1100}
+            height={800}
+            style={{ border: "1px solid #ccc", background: "#fff" }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+          ></canvas>
+          {selectedAsset && selectedAsset.type === "video" && (
+            <video
+              controls
+              src={selectedAsset.src}
+              style={{
+                position: "absolute",
+                left: `${assetPosition.x}px`,
+                top: `${assetPosition.y}px`,
+                width: `${assetSize.width}px`,
+                height: `${assetSize.height}px`,
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            />
+          )}
+        </div>
+      )}
+      <div style={{ flex: 1 }}>
+        <Outlet />
+      </div>
+      <RightSidebar />
+    </div>
   );
 };
 
-export default DashboardLayout;
+export default HomeDashboard;

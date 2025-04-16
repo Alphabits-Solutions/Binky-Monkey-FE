@@ -4,6 +4,7 @@ import React, { createContext, useState } from "react";
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+  const [selectedActivity, setSelectedActivity] = useState("");
   const [selectedPage, setSelectedPage] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
@@ -23,6 +24,8 @@ export const AppProvider = ({ children }) => {
         setAssetPosition,
         assetSize,
         setAssetSize,
+        selectedActivity,
+        setSelectedActivity
       }}
     >
       {children}
