@@ -1,6 +1,8 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Link, Navigate } from "react-router-dom";
 import { Layout, Menu } from "antd";
+import PrivateRoute from "../src/components/PrivateRoute";
+import Auth from "../src/pages/Auth";
 import ActivitySection from "./components/home/ActivitySection";
 import HomeDashboard from "./pages/HomeDashboard";
 import Pages from "./components/home/pages/pages";
@@ -62,14 +64,20 @@ const AppLayout = () => {
         )}
         <Content className="content">
           <Routes>
-            <Route path="/" element={<ActivitySection />} />
-            <Route path="/activity/:activityId" element={<HomeDashboard />}>
+            {/* Public Route */}
+            <Route path="/auth" element={<Auth />} />
+            {/* Protected routes */}
+            <Route path="/" element={ <PrivateRoute> <ActivitySection /></PrivateRoute> }
+            />
+            <Route path="/activity" element={<ActivitySection />} />
+            <Route path="/activity/:activityId" element={<PrivateRoute><HomeDashboard /></PrivateRoute>}>
               <Route path="page" element={<Pages />} />
               <Route path="layer" element={<Layers />} />
               <Route path="asset" element={<Asset />} />
               <Route path="audio" element={<Audio />} />
               <Route path="object" element={<Object />} />
               <Route path="more" element={<More />} />
+               <Route path="*" element={<Navigate to="/auth" />} />
             </Route>
           </Routes>
         </Content>
@@ -78,11 +86,27 @@ const AppLayout = () => {
   );
 };
 
+const AppRoutes = () => {
+  const location = useLocation();
+  const isAuthPage = location.pathname === "/auth";
+
+  return (
+    <Routes>
+     
+      <Route path="/auth" element={<Auth />} />
+
+     
+      <Route path="*" element={<AppLayout />} />
+    </Routes>
+  );
+};
+
 const App = () => {
   return (
     <AppProvider>
       <Router>
-        <AppLayout />
+      <AppRoutes />
+        {/* <AppLayout /> */}
       </Router>
     </AppProvider>
   );

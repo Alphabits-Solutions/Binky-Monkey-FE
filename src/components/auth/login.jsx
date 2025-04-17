@@ -1,10 +1,12 @@
 import {useState} from 'react';
 import { Form, Input, Button, Checkbox, Typography, Card, message } from 'antd';
 import { loginUser } from "../../services/api";
+import { useNavigate } from "react-router-dom";
 
 const { Title } = Typography;
 
 const Login = ( {setSignup} ) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const onFinish = async (values) => {
@@ -14,6 +16,9 @@ const Login = ( {setSignup} ) => {
       const response = await loginUser({ email, password });
       message.success(response.message);
       sessionStorage.setItem("x-auth-token",response.token);
+       
+      navigate(`/activity`);
+      // navigate("/");
     } catch (error) {
       message.error(error.message || "Login failed");
     } finally {
