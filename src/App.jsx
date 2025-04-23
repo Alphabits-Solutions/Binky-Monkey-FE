@@ -69,7 +69,7 @@ const AppLayout = () => {
             {/* Protected routes */}
             <Route path="/" element={ <PrivateRoute> <ActivitySection /></PrivateRoute> }
             />
-            <Route path="/activity" element={<ActivitySection />} />
+            {/* <Route path="/activity" element={<ActivitySection />} /> */}
             <Route path="/activity/:activityId" element={<PrivateRoute><HomeDashboard /></PrivateRoute>}>
               <Route path="page" element={<Pages />} />
               <Route path="layer" element={<Layers />} />

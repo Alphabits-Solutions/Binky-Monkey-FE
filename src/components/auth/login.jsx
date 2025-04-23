@@ -17,8 +17,8 @@ const Login = ( {setSignup} ) => {
       message.success(response.message);
       sessionStorage.setItem("x-auth-token",response.token);
        
-      navigate(`/activity`);
-      // navigate("/");
+      // navigate(`/activity`);
+      navigate("/");
     } catch (error) {
       message.error(error.message || "Login failed");
     } finally {
