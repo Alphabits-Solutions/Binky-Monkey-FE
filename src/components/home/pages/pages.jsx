@@ -2,17 +2,17 @@ import { useState, useEffect, useCallback, useContext } from "react";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { AppContext } from "../../../context/AppContext";
 import { createPage, getAllPages, updatePage, deletePage } from "../../../services/api";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { message, Modal, Input, Button } from "antd";
 
 const SlideSection = () => {
   const { activityId } = useParams();
-  const { setSelectedPage } = useContext(AppContext);
+  const { setSelectedPage,selectedSlideId, setSelectedSlideId } = useContext(AppContext);
   const [slides, setSlides] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
   const [pageName, setPageName] = useState("");
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const loadPages = useCallback(async () => {
     try {
@@ -82,9 +82,11 @@ const SlideSection = () => {
   };
 
   const handleSelectSlide = useCallback((id) => {
+    console.log("Selected Slide ID:", id);
     setSelectedPage(id);
-    navigate(`/activity/${activityId}/asset`);
-  }, [activityId, navigate, setSelectedPage]);
+    setSelectedSlideId(id); 
+    // navigate(`/activity/${activityId}/game?tab=asset`);
+  }, [setSelectedPage,setSelectedSlideId]);
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
@@ -115,7 +117,7 @@ const SlideSection = () => {
           slides.map((slide) => (
             <div
               key={slide._id}
-              className="slide-card"
+              className={`slide-card ${selectedSlideId === slide._id ? 'selected' : ''}`} 
               onClick={() => handleSelectSlide(slide._id)}
               role="button"
               tabIndex={0}

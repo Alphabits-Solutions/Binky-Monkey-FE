@@ -59,7 +59,7 @@ const ActivitySection = () => {
 
   const handleCardClick = (activityId) => {
     setSelectedActivity(activityId);
-    navigate(`/activity/${activityId}/page`);
+    navigate(`/activity/${activityId}`);
   };
 
   return (

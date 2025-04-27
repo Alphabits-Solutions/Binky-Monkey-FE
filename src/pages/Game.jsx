@@ -1,12 +1,18 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { Outlet, useParams } from "react-router-dom";
+/* eslint-disable no-unused-vars */
+import  { useContext, useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import RightSidebar from "../components/RightSidebar";
 import Slide from "../components/home/pages/pages";
+import Layer from '../components/home/layer/layer';
+import Asset from '../components/home/assets/assets';
 import { AppContext } from "../context/AppContext";
 import "../assets/sass/homescreen.scss";
 
-const HomeDashboard = () => {
+const GameComponent = () => {
   const { activityId } = useParams();
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab") || "page";
+  
   const {
     selectedPage,
     selectedAsset,
@@ -15,6 +21,7 @@ const HomeDashboard = () => {
     setAssetPosition,
     assetSize,
   } = useContext(AppContext);
+  
   const canvasRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -74,11 +81,24 @@ const HomeDashboard = () => {
     setIsDragging(false);
   };
 
+  const renderTabContent = () => {
+    switch (tab) {
+      case "layer":
+        return <Layer />;
+      case "asset":
+        return <Asset />;
+      case "page":
+      default:
+        return <Slide />;
+    }
+  };
+
   return (
     <div className="asset-manager">
       <div style={{ minWidth: "250px" }}>
-        <Slide />
+        {renderTabContent()}
       </div>
+      
       {selectedPage && (
         <div style={{ position: "relative", width: 1100, height: 800 }}>
           <canvas
@@ -91,6 +111,7 @@ const HomeDashboard = () => {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
           ></canvas>
+          
           {selectedAsset && selectedAsset.type === "video" && (
             <video
               controls
@@ -109,12 +130,10 @@ const HomeDashboard = () => {
           )}
         </div>
       )}
-      <div style={{ flex: 1 }}>
-        <Outlet />
-      </div>
+      
       <RightSidebar />
     </div>
   );
 };
 
-export default HomeDashboard;
+export default GameComponent;

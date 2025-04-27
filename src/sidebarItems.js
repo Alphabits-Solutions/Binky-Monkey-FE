@@ -9,19 +9,19 @@ export const getSidebarItems = (activityId) => [
   {
     key: 1,
     icon: pagesIcon,
-    path: `/activity/${activityId}/page`,
+    path: `/activity/${activityId}/game?tab=page`,
     label: "Pages",
   },
   {
     key: 2,
     icon: layerIcon,
-    path: `/activity/${activityId}/layer`,
+    path: `/activity/${activityId}/game?tab=layer`,
     label: "Layers",
   },
   {
     key: 3,
     icon: assetIcon,
-    path: `/activity/${activityId}/asset`,
+    path: `/activity/${activityId}/game?tab=asset`,
     label: "Assets",
   },
   {

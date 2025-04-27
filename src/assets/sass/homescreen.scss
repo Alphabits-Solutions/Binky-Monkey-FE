@@ -210,7 +210,7 @@
   
   .activity-card {
 
-    background: #f9f6f2;
+    background: #faf5ef;
     text-align: center;
     border-radius: 8px;
     padding: 6px;
@@ -231,7 +231,7 @@
     align-items: center;
     justify-content: flex-start;
     padding: 40px;
-    background: #EFE8DE;
+    // background: #EFE8DE;
   
     .title-container {
       display: flex;
@@ -339,10 +339,9 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-    }
-  
-    .slide-card {
-      background: #f4f4f4;
+      
+      .slide-card {
+        background: #f4f4f4;
       padding: 12px;
       border-radius: 5px;
       text-align: left;
@@ -351,18 +350,23 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: 0.2s ease-in-out;
+      transition: background-color 0.3s;
+
+      .slide-card.selected {
+        background-color: #e6f7ff; 
+        border: 1px solid #1890ff; 
+      }
   
       &:hover {
         background: #e0e0e0;
       }
-  
+      
       &.active {
         background: #d3540084;
         color: white;
       }
     }
-  
+    
     .slide-actions {
       display: flex;
       gap: 10px;
@@ -377,6 +381,7 @@
       color: red;
       cursor: pointer;
     }
+  }
   }
 
   //Layers
