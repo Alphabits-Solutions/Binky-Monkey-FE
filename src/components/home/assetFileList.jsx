@@ -42,7 +42,7 @@ const AssetFileList = () => {
       if (response.success) {
         setFiles((prevFiles) => [...prevFiles, response]);
         alert("File uploaded successfully!");
-        setRefresh(!refresh); // Trigger refresh after upload
+        setRefresh(!refresh);
       } else {
         throw new Error("Invalid response structure");
       }

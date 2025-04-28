@@ -5,7 +5,7 @@ import { createPage, getAllPages, updatePage, deletePage } from "../../services/
 import { message, Modal, Input, Button } from "antd";
 
 const Pages = () => {
-  const { selectedActivity, setSelectedPage,selectedSlideId, setSelectedSlideId } = useContext(AppContext);
+  const { selectedActivity, setSelectedPage, selectedSlideId, setSelectedSlideId } = useContext(AppContext);
   const [slides, setSlides] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
@@ -81,9 +81,8 @@ const Pages = () => {
   const handleSelectSlide = useCallback((id) => {
     console.log("Selected Slide ID:", id);
     setSelectedPage(id);
-    setSelectedSlideId(id); 
-    // navigate(`/activity/${activityId}/game?tab=asset`);
-  }, [setSelectedPage,setSelectedSlideId]);
+    setSelectedSlideId(id);
+  }, [setSelectedPage, setSelectedSlideId]);
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
@@ -114,7 +113,7 @@ const Pages = () => {
           slides.map((slide) => (
             <div
               key={slide._id}
-              className={`slide-card ${selectedSlideId === slide._id ? 'selected' : ''}`} 
+              className={`slide-card ${selectedSlideId === slide._id ? 'selected' : ''}`}
               onClick={() => handleSelectSlide(slide._id)}
               role="button"
               tabIndex={0}

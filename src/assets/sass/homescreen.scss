@@ -207,15 +207,15 @@
   .sider-container {
     width: 100px;
     background: #fff;
-    .ant-menu{
+    .ant-menu {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .sider-menu-item{
+    .sider-menu-item {
       padding-top: 10px;
       height: auto;
-      img{
+      img {
         width: 60px;
         height: 70px;
       }
@@ -334,20 +334,22 @@
       justify-content: space-between;
       align-items: center;
       transition: background-color 0.3s;
-
-      .slide-card.selected {
-        background-color: #e6f7ff;
-        border: 1px solid #1890ff;
-      }
-
       &:hover {
-        background: #e0e0e0;
+        border-color: #999;
+        background: #af7964;
       }
 
       &.active {
         background: #d3540084;
         color: white;
       }
+    }
+
+    .selected {
+      border: 2px solid #d3540084;
+      background: #d3540084;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .slide-actions {
