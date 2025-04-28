@@ -1,12 +1,13 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
 import RightSidebar from "../components/RightSidebar";
 import Sider from "../components/Sider";
+import Pages from "../components/home/pages";
+import Layers from "../components/home/layerList";
+import Assets from "../components/home/assetFileList";
 import { AppContext } from "../context/AppContext";
 import "../assets/sass/homescreen.scss";
 
 const GameComponent = () => {
-  const { activityId } = useParams();
   const {
     selectedPage,
     selectedAsset,
@@ -14,7 +15,7 @@ const GameComponent = () => {
     assetPosition,
     setAssetPosition,
     assetSize,
-    selectedActivity,
+    selectedTab,
   } = useContext(AppContext);
 
   const canvasRef = useRef(null);
@@ -90,6 +91,21 @@ const GameComponent = () => {
   return (
     <div className="asset-manager" style={{ display: "flex" }}>
       <Sider />
+      {selectedTab === "1" && (
+        <div style={{ width: 300, borderRight: "1px solid #ccc", overflowY: "auto" }}>
+          <Pages />
+        </div>
+      )}
+      {selectedTab === "2" && (
+        <div style={{ width: 300, borderRight: "1px solid #ccc", overflowY: "auto" }}>
+          <Layers />
+        </div>
+      )}
+      {selectedTab === "3" && (
+        <div style={{ width: 300, borderRight: "1px solid #ccc", overflowY: "auto" }}>
+          <Assets />
+        </div>
+      )}
       <div style={{ position: "relative", width: 1100, height: 800 }}>
         <canvas
           ref={canvasRef}

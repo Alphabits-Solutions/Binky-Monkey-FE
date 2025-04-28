@@ -2,37 +2,34 @@ import { useState, useEffect, useCallback, useContext } from "react";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { AppContext } from "../../context/AppContext";
 import { createPage, getAllPages, updatePage, deletePage } from "../../services/api";
-import { useParams } from "react-router-dom";
 import { message, Modal, Input, Button } from "antd";
 
 const Pages = () => {
-  const { activityId } = useParams();
-  const { setSelectedPage,selectedSlideId, setSelectedSlideId } = useContext(AppContext);
+  const { selectedActivity, setSelectedPage,selectedSlideId, setSelectedSlideId } = useContext(AppContext);
   const [slides, setSlides] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
   const [pageName, setPageName] = useState("");
-  // const navigate = useNavigate();
 
   const loadPages = useCallback(async () => {
     try {
-      const result = await getAllPages(activityId);
+      const result = await getAllPages(selectedActivity);
       setSlides(result.pages || []);
     } catch (error) {
       console.error("Failed to load pages:", error);
       message.error("Failed to load pages. Please try again.");
     }
-  }, [activityId]);
+  }, []);
 
   useEffect(() => {
-    if (activityId) {
+    if (selectedActivity) {
       loadPages();
     }
-  }, [activityId, loadPages]);
+  }, [selectedActivity, loadPages]);
 
   const handleAddSlide = async () => {
     try {
-      await createPage(activityId, { title: "Untitled Page" });
+      await createPage(selectedActivity, { title: "Untitled Page" });
       message.success("Page created successfully!");
       loadPages();
     } catch (error) {
@@ -72,7 +69,7 @@ const Pages = () => {
 
   const handleDeleteSlide = async (pageId) => {
     try {
-      await deletePage(activityId, pageId);
+      await deletePage(selectedActivity, pageId);
       setSlides((prev) => prev.filter((s) => s._id !== pageId));
       message.success("Page deleted successfully!");
     } catch (error) {

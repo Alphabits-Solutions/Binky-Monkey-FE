@@ -11,7 +11,7 @@ export const AppProvider = ({ children }) => {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [assetPosition, setAssetPosition] = useState({ x: 50, y: 50 });
   const [assetSize, setAssetSize] = useState({ width: 100, height: 100 });
-  const [selectedTab,setSelectedTab]=useState('page')
+  const [selectedTab, setSelectedTab]= useState('1');
   
 
   return (

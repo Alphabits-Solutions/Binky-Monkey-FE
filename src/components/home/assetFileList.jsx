@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
-import { getAllAssets, uploadAsset, deleteAsset } from "../../../services/api";
-import { AppContext } from "../../../context/AppContext.jsx";
+import { getAllAssets, uploadAsset, deleteAsset } from "../../services/api";
+import { AppContext } from "../../context/AppContext.jsx";
 
 const AssetFileList = () => {
   const { setSelectedAsset } = useContext(AppContext);
@@ -9,12 +9,12 @@ const AssetFileList = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("images");
   const [uploading, setUploading] = useState(false);
-  const [refresh, setRefresh] = useState(false); // Integrated refresh state
+  const [refresh, setRefresh] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchFiles();
-  }, [refresh]); // Refresh triggers fetchFiles
+  }, [refresh]);
 
   const fetchFiles = async () => {
     try {

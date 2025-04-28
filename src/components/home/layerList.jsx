@@ -2,8 +2,8 @@ import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { FaTrash, FaExpand,FaArrowsAlt,FaCube } from "react-icons/fa"
 import { getAllLayers, createLayer, deleteLayer } from "../../services/api"
-import arrowRight from "../../../assets/icons/Home/layer/arrow-right.svg";
-import arrowDown from "../../../assets/icons/Home/layer/arrow-down.svg";
+import arrowRight from "../../assets/icons/Home/layer/arrow-right.svg";
+import arrowDown from "../../assets/icons/Home/layer/arrow-down.svg";
 
 const LayerList = () => {
   const { pageId } = useParams()
