@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useContext } from "react";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { AppContext } from "../../../context/AppContext";
-import { createPage, getAllPages, updatePage, deletePage } from "../../../services/api";
+import { AppContext } from "../../context/AppContext";
+import { createPage, getAllPages, updatePage, deletePage } from "../../services/api";
 import { useParams } from "react-router-dom";
 import { message, Modal, Input, Button } from "antd";
 
-const SlideSection = () => {
+const Pages = () => {
   const { activityId } = useParams();
   const { setSelectedPage,selectedSlideId, setSelectedSlideId } = useContext(AppContext);
   const [slides, setSlides] = useState([]);
@@ -165,4 +165,4 @@ const SlideSection = () => {
   );
 };
 
-export default SlideSection;
+export default Pages;

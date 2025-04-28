@@ -2,15 +2,14 @@ import { useContext, useEffect, useState } from "react";
 import { Button, Card, Dropdown, message } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import {AppContext} from "../../context/AppContext";
-
-import folder from "../../assets/icons/folder.svg";
+import {AppContext} from "../context/AppContext";
+import folder from "../assets/icons/folder.svg";
 import {
   createActivity,
   deleteActivity,
   getAllActivities,
   updateActivity,
-} from "../../services/api";
+} from "../services/api";
 
 const ActivitySection = () => {
   const [activities, setActivities] = useState([]);
@@ -59,7 +58,7 @@ const ActivitySection = () => {
 
   const handleCardClick = (activityId) => {
     setSelectedActivity(activityId);
-    navigate(`/activity/${activityId}`);
+    navigate(`/home`);
   };
 
   return (

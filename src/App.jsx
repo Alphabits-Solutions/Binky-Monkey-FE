@@ -1,16 +1,44 @@
-import React from "react";
-import { BrowserRouter as Router } from "react-router-dom";
-import { AppProvider } from "../src/context/AppContext";
-import AppRoutes from "../src/AppRoutes";
+import React, { useContext } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+} from "react-router-dom";
+import { Layout } from "antd";
+import Auth from "./pages/Auth";
+import Header from "./components/header";
+import ActivitySection from "./pages/ActivitySection";
+import Game from "./pages/Game";
 import "./assets/sass/homescreen.scss";
 
+const {  Content } = Layout;
+
 const App = () => {
+  const isHomePage = location.pathname === "/";
+
   return (
-    <AppProvider>
       <Router>
-        <AppRoutes />
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+
+          <Route
+            path="*"
+            element={
+              <Layout style={{ minHeight: "100vh" }}>
+                <Header/>
+                <Layout className="main-content">
+                  <Content className="content">
+                    <Routes>
+                      <Route path="/" element={<ActivitySection />} />
+                      <Route path="/home" element={<Game />} />
+                    </Routes>
+                  </Content>
+                </Layout>
+              </Layout>
+            }
+          />
+        </Routes>
       </Router>
-    </AppProvider>
   );
 };
 

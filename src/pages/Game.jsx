@@ -1,18 +1,12 @@
-/* eslint-disable no-unused-vars */
-import  { useContext, useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useContext, useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import RightSidebar from "../components/RightSidebar";
-import Slide from "../components/home/pages/pages";
-import Layer from '../components/home/layer/layer';
-import Asset from '../components/home/assets/assets';
+import Sider from "../components/Sider";
 import { AppContext } from "../context/AppContext";
 import "../assets/sass/homescreen.scss";
 
 const GameComponent = () => {
   const { activityId } = useParams();
-  const [searchParams] = useSearchParams();
-  const tab = searchParams.get("tab") || "page";
-  
   const {
     selectedPage,
     selectedAsset,
@@ -20,19 +14,31 @@ const GameComponent = () => {
     assetPosition,
     setAssetPosition,
     assetSize,
+    selectedActivity,
   } = useContext(AppContext);
-  
+
   const canvasRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const drawAsset = (ctx, img) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.drawImage(img, assetPosition.x, assetPosition.y, assetSize.width, assetSize.height);
+    ctx.drawImage(
+      img,
+      assetPosition.x,
+      assetPosition.y,
+      assetSize.width,
+      assetSize.height
+    );
   };
 
   useEffect(() => {
-    if (selectedPage && selectedAsset && selectedAsset.type === "image" && canvasRef.current) {
+    if (
+      selectedPage &&
+      selectedAsset &&
+      selectedAsset.type === "image" &&
+      canvasRef.current
+    ) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
 
@@ -81,56 +87,21 @@ const GameComponent = () => {
     setIsDragging(false);
   };
 
-  const renderTabContent = () => {
-    switch (tab) {
-      case "layer":
-        return <Layer />;
-      case "asset":
-        return <Asset />;
-      case "page":
-      default:
-        return <Slide />;
-    }
-  };
-
   return (
-    <div className="asset-manager">
-      <div style={{ minWidth: "250px" }}>
-        {renderTabContent()}
+    <div className="asset-manager" style={{ display: "flex" }}>
+      <Sider />
+      <div style={{ position: "relative", width: 1100, height: 800 }}>
+        <canvas
+          ref={canvasRef}
+          id="asset-canvas"
+          width={1100}
+          height={800}
+          style={{ border: "1px solid #ccc", background: "#fff" }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+        />
       </div>
-      
-      {selectedPage && (
-        <div style={{ position: "relative", width: 1100, height: 800 }}>
-          <canvas
-            ref={canvasRef}
-            id="asset-canvas"
-            width={1100}
-            height={800}
-            style={{ border: "1px solid #ccc", background: "#fff" }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-          ></canvas>
-          
-          {selectedAsset && selectedAsset.type === "video" && (
-            <video
-              controls
-              src={selectedAsset.src}
-              style={{
-                position: "absolute",
-                left: `${assetPosition.x}px`,
-                top: `${assetPosition.y}px`,
-                width: `${assetSize.width}px`,
-                height: `${assetSize.height}px`,
-              }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            />
-          )}
-        </div>
-      )}
-      
       <RightSidebar />
     </div>
   );
