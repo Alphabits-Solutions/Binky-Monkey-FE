@@ -3,7 +3,6 @@ import axios from "axios";
 // Access environment variables correctly
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const API_ASSET_URL= "/asset";
-const API_ACTIVITY_URL= "http://localhost:8000/activity";
 const API_AUDIO_URL= "http://localhost:8000/audio";
 
 const api = axios.create({
@@ -34,14 +33,9 @@ export const loginUser = async (credentials) => {
   }
 };
 
-
-//Activity Api handle
-
-//Create Activity
-
 export const createActivity = async (activityData) => {
   try {
-    const response = await api.post(API_ACTIVITY_URL, activityData);
+    const response = await api.post("/activity", activityData);
     return response.data;
   } catch (error) {
     console.error("Error creating activity:", error);
@@ -52,7 +46,7 @@ export const createActivity = async (activityData) => {
 //Get All Activity
 export const getAllActivities = async () => {
   try {
-    const response = await api.get(`${API_ACTIVITY_URL}`);
+    const response = await api.get("/activity");
     return response.data;
   } catch (error) {
     console.error("Error fetching activities:", error);
@@ -63,7 +57,7 @@ export const getAllActivities = async () => {
 // Get activity by ID
 export const getActivityById = async (activityId) => {
   try {
-    const response = await api.get(`${API_ACTIVITY_URL}/${activityId}`);
+    const response = await api.get(`/activity/${activityId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching activity:", error);
@@ -74,7 +68,7 @@ export const getActivityById = async (activityId) => {
 // Update activity
 export const updateActivity = async (activityId, updatedData) => {
   try {
-    const response = await api.put(`${API_ACTIVITY_URL}/${activityId}`, updatedData);
+    const response = await api.put(`/activity/${activityId}`, updatedData);
     return response.data;
   } catch (error) {
     console.error("Error updating activity:", error);
@@ -85,7 +79,7 @@ export const updateActivity = async (activityId, updatedData) => {
 // Delete activity
 export const deleteActivity = async (activityId) => {
   try {
-    const response = await api.delete(`${API_ACTIVITY_URL}/${activityId}`);
+    const response = await api.delete(`/activity/${activityId}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting activity:", error);
@@ -93,12 +87,9 @@ export const deleteActivity = async (activityId) => {
   }
 };
 
-
-//Page API Handel
-
-export const createPage = async (activityId, data) => {
+export const createPage = async ( data) => {
   try {
-    const response = await api.post(`/activity/${activityId}/page`, data);
+    const response = await api.post(`/page`, data);
     return response.data;
   } catch (error) {
     console.error("Error creating page:", error);
@@ -109,7 +100,9 @@ export const createPage = async (activityId, data) => {
 
 export const getAllPages = async (activityId) => {
   try {
-    const response = await api.get(`/activity/${activityId}/page`);
+    const response = await api.get(`/page`, {
+      params: { activityId },
+    });
     return response.data;
   } catch (error) {
     console.error("Error fetching pages:", error);
@@ -128,9 +121,9 @@ export const updatePage = async (pageId, pageData) => {
 };
 
 
-export const deletePage = async (activityId, pageId) => {
+export const deletePage = async ( pageId) => {
   try {
-    const response = await api.delete(`/activity/${activityId}/page/${pageId}`);
+    const response = await api.delete(`/page/${pageId}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting page:", error);

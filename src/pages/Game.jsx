@@ -106,12 +106,12 @@ const GameComponent = () => {
           <Assets />
         </div>
       )}
-      <div style={{ position: "relative", width: 1100, height: 800 }}>
+      <div style={{ position: "relative", width: "", height: "90%" }}>
         <canvas
           ref={canvasRef}
           id="asset-canvas"
-          width={1100}
-          height={800}
+          width={900}
+          height={650}
           style={{ border: "1px solid #ccc", background: "#fff" }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

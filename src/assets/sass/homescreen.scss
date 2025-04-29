@@ -205,7 +205,7 @@
   justify-content: space-between;
 
   .sider-container {
-    width: 100px;
+    width: 85px;
     background: #fff;
     .ant-menu {
       display: flex;
@@ -213,11 +213,10 @@
       gap: 10px;
     }
     .sider-menu-item {
-      padding-top: 10px;
       height: auto;
       img {
-        width: 60px;
-        height: 70px;
+        width: 40px;
+        height: 40px;
       }
     }
   }
@@ -270,8 +269,6 @@
   }
 }
 
-//pages
-
 .menuItem.ant-menu-item-selected {
   background-color: #e6f7ff; /* Highlight color */
   border-right: 3px solid #1890ff; /* Optional border for emphasis */
@@ -279,15 +276,14 @@
 .slide-list-container {
   display: flex;
   flex-direction: column;
-  width: 20em;
+  width: 200px;
   height: 90vh;
   padding: 10px;
   background: #fff;
-  position: absolute;
-  left: 90px;
-  top: 5em;
   overflow-y: auto;
-  border-right: 1px solid #ddd;
+  margin-top: 8px;
+  border-right: 1px solid #861E00;
+  border-radius: 20px;
 
   .header {
     display: flex;
@@ -295,7 +291,7 @@
     justify-content: space-between;
 
     h2 {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
       text-align: left;
       margin: 0;
@@ -354,7 +350,7 @@
 
     .slide-actions {
       display: flex;
-      gap: 10px;
+      gap: 5px;
     }
 
     .edit-icon {

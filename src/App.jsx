@@ -4,7 +4,7 @@ import {
   Routes,
   Route,
 } from "react-router-dom";
-import { Layout } from "antd";
+import { Layout, ConfigProvider, theme } from "antd";
 import Auth from "./pages/Auth";
 import Header from "./components/header";
 import ActivitySection from "./pages/ActivitySection";
@@ -17,10 +17,18 @@ const App = () => {
   const isHomePage = location.pathname === "/";
 
   return (
+    <ConfigProvider
+    theme={{
+      // 1. Use dark algorithm
+      // algorithm: theme.darkAlgorithm,
+
+      // 2. Combine dark algorithm and compact algorithm
+      algorithm:  theme.compactAlgorithm,
+    }}
+  >
       <Router>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-
           <Route
             path="*"
             element={
@@ -39,6 +47,7 @@ const App = () => {
           />
         </Routes>
       </Router>
+      </ConfigProvider>
   );
 };
 

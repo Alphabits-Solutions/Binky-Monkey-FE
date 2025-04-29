@@ -14,12 +14,12 @@ const Pages = () => {
   const loadPages = useCallback(async () => {
     try {
       const result = await getAllPages(selectedActivity);
-      setSlides(result.pages || []);
+      setSlides(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error("Failed to load pages:", error);
       message.error("Failed to load pages. Please try again.");
     }
-  }, []);
+  }, [selectedActivity]);
 
   useEffect(() => {
     if (selectedActivity) {
@@ -29,7 +29,7 @@ const Pages = () => {
 
   const handleAddSlide = async () => {
     try {
-      await createPage(selectedActivity, { title: "Untitled Page" });
+      await createPage({ title: "Untitled Page", activityId: selectedActivity });
       message.success("Page created successfully!");
       loadPages();
     } catch (error) {
@@ -93,17 +93,15 @@ const Pages = () => {
   return (
     <div className="slide-list-container">
       <div className="header">
-        <h2>PAGES</h2>
-        <div className="upload-section">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddSlide}
-            aria-label="Add new page"
-          >
-            Add Page
-          </Button>
-        </div>
+        <h3>PAGES</h3>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAddSlide}
+          aria-label="Add new page"
+        >
+          Add Page
+        </Button>
       </div>
 
       <div className="slide-grid">
