@@ -121,9 +121,9 @@ export const updatePage = async (pageId, pageData) => {
 };
 
 
-export const deletePage = async ( pageId) => {
+export const deletePage = async (pageId) => {
   try {
-    const response = await api.delete(`/page/${pageId}`);
+    const response = await api.delete(`/page/${pageId}`)
     return response.data;
   } catch (error) {
     console.error("Error deleting page:", error);

@@ -84,6 +84,7 @@ const LayerList = () => {
       }
 
       setLayers((prev) => [...prev, layerToAdd])
+      console.log("Layer created successfully!");
       setNewLayerName("")
       loadLayers()
     } catch (error) {

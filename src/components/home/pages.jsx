@@ -69,7 +69,7 @@ const Pages = () => {
 
   const handleDeleteSlide = async (pageId) => {
     try {
-      await deletePage(selectedActivity, pageId);
+      await deletePage(pageId);
       setSlides((prev) => prev.filter((s) => s._id !== pageId));
       message.success("Page deleted successfully!");
     } catch (error) {
