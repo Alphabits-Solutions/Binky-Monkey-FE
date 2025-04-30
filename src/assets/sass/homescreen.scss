@@ -38,29 +38,26 @@
 }
 
 .right-sidebar {
-  width: 250px;
-  height: 90vh;
+  width: 240px;
+  height: 85vh;
   background: #fff;
   padding: 15px;
   border-left: 1px solid #ddd;
   display: flex;
   flex-direction: column;
   gap: 15px;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.138);
-  border-top: 2px solid rgba(0, 0, 0, 0.138);
+  border: 1px solid #861E00;
+  border-radius: 20px;
 
   h3 {
     color: #7e2807;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     margin-bottom: 10px;
   }
 
   .layout {
     border-bottom: 2px solid rgba(0, 0, 0, 0.138);
-    margin-bottom: 20px;
-    margin-top: 20px;
-    padding-bottom: 28px;
 
     .layout-controls {
       display: flex;
@@ -68,7 +65,7 @@
       gap: 10px;
 
       label {
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 600;
       }
 
@@ -89,7 +86,7 @@
     margin-bottom: 10px;
 
     label {
-      font-size: 16px;
+      font-size: 12px;
       font-weight: 600;
       color: #333;
       padding-right: 15px;
@@ -116,7 +113,7 @@
       span {
         border-right: 2px solid rgba(0, 0, 0, 0.114);
         padding-right: 4.5px;
-        font-size: 16px;
+        font-size: 12px;
         font-weight: 500;
         color: #333;
       }
@@ -129,15 +126,14 @@
     gap: 8px;
 
     button {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 8px;
+      width: 100%;
+      padding: 5px;
       border: none;
       background: #f4f4f4;
       cursor: pointer;
       border-radius: 5px;
-      font-size: 14px;
+      font-size: 12px;
+      text-align: left;
     }
 
     button:hover {
@@ -198,12 +194,6 @@
 }
 
 .asset-manager {
-  min-height: 45em;
-  display: flex;
-  flex-direction: row;
-  align-items: start;
-  justify-content: space-between;
-
   .sider-container {
     width: 85px;
     background: #fff;
@@ -277,12 +267,14 @@
   display: flex;
   flex-direction: column;
   width: 200px;
-  height: 90vh;
+  height:85vh;
   padding: 10px;
   background: #fff;
   overflow-y: auto;
   margin-top: 8px;
   border-right: 1px solid #861E00;
+  border-bottom: 1px solid #861E00;
+  border-top: 1px solid #861E00;
   border-radius: 20px;
 
   .header {
@@ -364,8 +356,6 @@
     }
   }
 }
-
-//Layers
 
 .layer-list {
   display: flex;

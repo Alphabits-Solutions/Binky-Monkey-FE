@@ -92,25 +92,25 @@ const GameComponent = () => {
     <div className="asset-manager" style={{ display: "flex" }}>
       <Sider />
       {selectedTab === "1" && (
-        <div style={{ width: 300, borderRight: "1px solid #ccc", overflowY: "auto" }}>
+        <div style={{ width: 300, overflowY: "auto" }}>
           <Pages />
         </div>
       )}
       {selectedTab === "2" && (
-        <div style={{ width: 300, borderRight: "1px solid #ccc", overflowY: "auto" }}>
+        <div style={{ width: 300, overflowY: "auto" }}>
           <Layers />
         </div>
       )}
       {selectedTab === "3" && (
-        <div style={{ width: 300, borderRight: "1px solid #ccc", overflowY: "auto" }}>
+        <div style={{ width: 300, overflowY: "auto" }}>
           <Assets />
         </div>
       )}
-      <div style={{ position: "relative", width: "", height: "90%" }}>
+      <div style={{ flex: 1, padding: "20px" }}>
         <canvas
           ref={canvasRef}
           id="asset-canvas"
-          width={900}
+          width={800}
           height={650}
           style={{ border: "1px solid #ccc", background: "#fff" }}
           onMouseDown={handleMouseDown}
