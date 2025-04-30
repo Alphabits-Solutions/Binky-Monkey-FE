@@ -14,6 +14,8 @@ const GameComponent = () => {
     selectedAction,
     assetPosition,
     setAssetPosition,
+    shadowPosition,
+    setShadowPosition,
     assetSize,
     selectedTab,
   } = useContext(AppContext);
@@ -21,9 +23,13 @@ const GameComponent = () => {
   const canvasRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [draggingAsset, setDraggingAsset] = useState(null);
 
+  // Draw assets on canvas
   const drawAsset = (ctx, img) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // Draw original asset
     ctx.drawImage(
       img,
       assetPosition.x,
@@ -31,8 +37,37 @@ const GameComponent = () => {
       assetSize.width,
       assetSize.height
     );
+
+    // Draw shadow asset if drag is selected and shadowPosition exists
+    if (selectedAction === "drag" && shadowPosition) {
+      ctx.globalAlpha = 0.5; // Semi-transparent shadow
+      ctx.drawImage(
+        img,
+        shadowPosition.x,
+        shadowPosition.y,
+        assetSize.width,
+        assetSize.height
+      );
+      ctx.globalAlpha = 1.0; // Reset opacity
+    }
   };
 
+  // Initialize shadow position when drag is selected
+  useEffect(() => {
+    if (
+      selectedAction === "drag" &&
+      selectedAsset &&
+      !shadowPosition &&
+      assetPosition
+    ) {
+      setShadowPosition({
+        x: assetPosition.x + 50,
+        y: assetPosition.y + 50,
+      });
+    }
+  }, [selectedAction, selectedAsset, shadowPosition, assetPosition, setShadowPosition]);
+
+  // Redraw canvas when dependencies change
   useEffect(() => {
     if (
       selectedPage &&
@@ -49,7 +84,7 @@ const GameComponent = () => {
         drawAsset(ctx, img);
       };
     }
-  }, [selectedPage, selectedAsset, assetPosition, assetSize]);
+  }, [selectedPage, selectedAsset, assetPosition, shadowPosition, assetSize, selectedAction]);
 
   const handleMouseDown = (e) => {
     if (selectedAction !== "drag" || !selectedAsset) return;
@@ -59,6 +94,7 @@ const GameComponent = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Check if clicking original asset
     if (
       x >= assetPosition.x &&
       x <= assetPosition.x + assetSize.width &&
@@ -67,6 +103,19 @@ const GameComponent = () => {
     ) {
       setIsDragging(true);
       setDragStart({ x: x - assetPosition.x, y: y - assetPosition.y });
+      setDraggingAsset("original");
+    }
+    // Check if clicking shadow asset
+    else if (
+      shadowPosition &&
+      x >= shadowPosition.x &&
+      x <= shadowPosition.x + assetSize.width &&
+      y >= shadowPosition.y &&
+      y <= shadowPosition.y + assetSize.height
+    ) {
+      setIsDragging(true);
+      setDragStart({ x: x - shadowPosition.x, y: y - shadowPosition.y });
+      setDraggingAsset("shadow");
     }
   };
 
@@ -78,14 +127,22 @@ const GameComponent = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    setAssetPosition({
-      x: x - dragStart.x,
-      y: y - dragStart.y,
-    });
+    if (draggingAsset === "original") {
+      setAssetPosition({
+        x: x - dragStart.x,
+        y: y - dragStart.y,
+      });
+    } else if (draggingAsset === "shadow") {
+      setShadowPosition({
+        x: x - dragStart.x,
+        y: y - dragStart.y,
+      });
+    }
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    setDraggingAsset(null);
   };
 
   return (

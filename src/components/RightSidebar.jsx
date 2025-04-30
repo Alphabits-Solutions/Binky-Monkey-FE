@@ -13,9 +13,11 @@ const RightSidebar = () => {
     setSelectedAction,
     assetPosition,
     setAssetPosition,
+    shadowPosition,
+    setShadowPosition,
     assetSize,
     setAssetSize,
-  } = useContext(AppContext); 
+  } = useContext(AppContext);
   const [fillColor, setFillColor] = useState("#861E00");
   const [strokeColor, setStrokeColor] = useState("#FFFFFF");
 
@@ -27,11 +29,19 @@ const RightSidebar = () => {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  const handlePositionChange = (e, axis) => {
-    setAssetPosition((prev) => ({
-      ...prev,
-      [axis]: parseInt(e.target.value) || 0,
-    }));
+  const handlePositionChange = (e, axis, target) => {
+    const value = parseInt(e.target.value) || 0;
+    if (target === "original") {
+      setAssetPosition((prev) => ({
+        ...prev,
+        [axis]: value,
+      }));
+    } else if (target === "shadow") {
+      setShadowPosition((prev) => ({
+        ...prev,
+        [axis]: value,
+      }));
+    }
   };
 
   const handleSizeChange = (e, dimension) => {
@@ -45,18 +55,35 @@ const RightSidebar = () => {
     drag: (
       <div className="layout-controls">
         <div>
-          <label>Position</label>
+          <label>Origin</label>
           <input
             type="text"
-            value={assetPosition?.x ?? 0} 
-            onChange={(e) => handlePositionChange(e, "x")}
+            value={assetPosition?.x ?? 0}
+            onChange={(e) => handlePositionChange(e, "x", "original")}
             placeholder="X"
           />
           <input
             type="text"
             value={assetPosition?.y ?? 0}
-            onChange={(e) => handlePositionChange(e, "y")}
+            onChange={(e) => handlePositionChange(e, "y", "original")}
             placeholder="Y"
+          />
+        </div>
+        <div>
+          <label>Destination</label>
+          <input
+            type="text"
+            value={shadowPosition?.x ?? ""}
+            onChange={(e) => handlePositionChange(e, "x", "shadow")}
+            placeholder="X"
+            disabled={!shadowPosition}
+          />
+          <input
+            type="text"
+            value={shadowPosition?.y ?? ""}
+            onChange={(e) => handlePositionChange(e, "y", "shadow")}
+            placeholder="Y"
+            disabled={!shadowPosition}
           />
         </div>
         <div>
@@ -103,7 +130,6 @@ const RightSidebar = () => {
         </div>
       </div>
     ),
-    // Add other actions as needed
   };
 
   return (
