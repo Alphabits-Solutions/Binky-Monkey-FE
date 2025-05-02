@@ -71,7 +71,7 @@
       }
 
       input {
-        width: 20%;
+        width: 30%;
         padding: 5px;
         margin: 2px;
         border: 1px solid #ccc;
@@ -525,8 +525,6 @@
   }
 
   .add-media {
-    width: 100%;
-    height: 140px;
     border: 2px dashed #aaa;
     display: flex;
     align-items: center;
@@ -537,8 +535,6 @@
   }
 
   .file-card {
-    width: 100%;
-    height: 140px;
     margin: 5px;
     overflow: hidden;
     border-radius: 5px;

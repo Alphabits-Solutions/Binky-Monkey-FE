@@ -3,7 +3,7 @@ import { getAllAssets, uploadAsset, deleteAsset } from "../../services/api";
 import { AppContext } from "../../context/AppContext.jsx";
 
 const AssetFileList = () => {
-  const { setSelectedAsset } = useContext(AppContext);
+  const { setSelectedAsset, setLayerProperties, selectedPage } = useContext(AppContext);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -64,7 +64,7 @@ const AssetFileList = () => {
       await deleteAsset(assetId);
       setFiles((prevFiles) => prevFiles.filter((file) => file._id !== assetId));
       alert("File deleted successfully!");
-      setRefresh(!refresh); // Trigger refresh after delete
+      setRefresh(!refresh);
     } catch (error) {
       console.error("Delete error:", error);
       alert("Failed to delete file!");
@@ -72,12 +72,22 @@ const AssetFileList = () => {
   };
 
   const handleSelectAsset = (file) => {
-    setSelectedAsset({
+    if (!selectedPage) {
+      alert("Please select a page before selecting an asset.");
+      return;
+    }
+    const asset = {
       id: file._id,
       src: file.filePath,
       name: file.fileName || "Asset",
       type: file.filePath.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image",
-    });
+    };
+    setSelectedAsset(asset);
+    setLayerProperties((prev) => ({
+      ...prev,
+      imgUrl: file.filePath,
+      type: asset.type,
+    }));
   };
 
   if (loading) return <p>Loading files...</p>;

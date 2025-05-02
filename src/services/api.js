@@ -97,7 +97,6 @@ export const createPage = async ( data) => {
   }
 };
 
-
 export const getAllPages = async (activityId) => {
   try {
     const response = await api.get(`/page`, {
@@ -134,28 +133,22 @@ export const deletePage = async (pageId) => {
 
 // Layer API
 export const getAllLayers = async (pageId) => {
-  try {
-    const response = await api.get(`/page/${pageId}/layer`)
-    return response.data
-  } catch (error) {
-    console.error("Error fetching layers:", error)
-    throw error
-  }
-}
+  const response = await api.get(`/layer`, {
+    params: { pageId },
+  });
+  return response.data;
+};
 
-export const createLayer = async (pageId, newLayer) => {
-  try {
-    const response = await api.post(`/page/${pageId}/layer`, newLayer)
-    return response.data
-  } catch (error) {
-    console.error("Error creating layer:", error)
-    throw error
-  }
-}
+export const createLayer = async ( layerData) => {
+  const response = await api.post(`/layers`, layerData, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  });
+  return response.data;
+};
 
-export const deleteLayer = async (pageId, layerId) => {
+export const deleteLayer = async ( layerId ) => {
   try {
-    await api.delete(`/page/${pageId}/layer/${layerId}`)
+    await api.delete(`layer/${layerId}`)
   } catch (error) {
     console.error("Error deleting layer:", error)
     throw error

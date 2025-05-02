@@ -1,198 +1,157 @@
-import { useState, useEffect } from "react"
-import { useParams } from "react-router-dom"
-import { FaTrash, FaExpand,FaArrowsAlt,FaCube } from "react-icons/fa"
-import { getAllLayers, createLayer, deleteLayer } from "../../services/api"
-import arrowRight from "../../assets/icons/Home/layer/arrow-right.svg";
-import arrowDown from "../../assets/icons/Home/layer/arrow-down.svg";
+import { useState, useEffect, useCallback, useContext } from "react";
+import { SaveOutlined } from "@ant-design/icons";
+import { AppContext } from "../../context/AppContext";
+import { getAllLayers, createLayer } from "../../services/api";
+import { message, Button, Collapse } from "antd";
 
-const LayerList = () => {
-  const { pageId } = useParams()
-  const [layers, setLayers] = useState([])
-  const [expanded, setExpanded] = useState({})
-  const [newLayerName, setNewLayerName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
+const { Panel } = Collapse;
 
-  // Demo actions 
-  const demoActions = [
-    { id: 1, name: "RESIZE", icon: <FaExpand /> },
-    { id: 2, name: "DRAG", icon: <FaArrowsAlt /> },
-    { id: 3, name: "3D ROTATION", icon: <FaCube /> }
-  ]
+const Layers = () => {
+  const {
+    selectedPage,
+    selectedAsset,
+    selectedAction,
+    layerProperties,
+    setLayerProperties,
+    layers,
+    setLayers,
+    selectedLayer,
+    setSelectedLayer,
+    setSelectedAsset,
+    setSelectedAction,
+    setAssetPosition,
+    setAssetSize,
+  } = useContext(AppContext);
 
-  const loadLayers = async () => {
-    if (!pageId) return
-
-    setIsLoading(true)
-    setError(null)
-
+  const loadLayers = useCallback(async () => {
+    if (!selectedPage) return;
     try {
-      const layersData = await getAllLayers(pageId)
-      console.log("Layers Response:", layersData)
-      
-      const layersArray = Array.isArray(layersData) ? layersData : layersData.layers ? layersData.layers : []
-
-      setLayers(
-        layersArray.map((layer) => ({
-          ...layer,
-          id: layer._id || layer.id, 
-          children: layer.children || [], 
-        })),
-      )
+      const result = await getAllLayers(selectedPage);
+      setLayers(result.layers || []);
     } catch (error) {
-      console.error("Error loading layers:", error)
-      setError("Failed to load layers. Please try again.")
-    } finally {
-      setIsLoading(false)
+      console.error("Failed to load layers:", error);
+      message.error("Failed to load layers. Please try again.");
     }
-  }
+  }, [selectedPage, setLayers]);
 
   useEffect(() => {
-    if (pageId) {
-      loadLayers()
+    loadLayers();
+  }, [loadLayers]);
+
+  // Create a new layer when asset, action, and properties are set
+  useEffect(() => {
+    if (
+      selectedPage &&
+      selectedAsset &&
+      layerProperties.imgUrl &&
+      !layers.some(
+        (layer) =>
+          layer.properties.imgUrl === layerProperties.imgUrl &&
+          layer.action === selectedAction &&
+          !layer.saved
+      )
+    ) {
+      const newLayer = {
+        name: "Untitled Layer",
+        action: selectedAction || "none",
+        properties: { ...layerProperties },
+        pageId: selectedPage,
+        saved: false,
+      };
+      setLayers((prev) => [...prev, newLayer]);
     }
-  }, [pageId])
+  }, [selectedPage, selectedAsset, selectedAction, layerProperties, setLayers, layers]);
 
-  const toggleExpand = (id) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
-  }
-
-  const deleteChild = (parentId, childIndex) => {
-    setLayers((prevLayers) =>
-      prevLayers.map((layer) =>
-        layer.id === parentId
-          ? {
-              ...layer,
-              children: layer.children.filter((_, i) => i !== childIndex),
-            }
-          : layer,
-      ),
-    )
-  }
-
-  const handleAddLayer = async () => {
-    if (!newLayerName || !pageId) return
-
+  const handleSaveLayer = async (layer) => {
     try {
-      const newLayer = { name: newLayerName }
-      const createdLayer = await createLayer(pageId, newLayer)
-
-      const layerToAdd = {
-        ...createdLayer,
-        id: createdLayer._id || createdLayer.id,
-        children: createdLayer.children || [],
-      }
-
-      setLayers((prev) => [...prev, layerToAdd])
-      console.log("Layer created successfully!");
-      setNewLayerName("")
-      loadLayers()
+      const savedLayer = await createLayer(selectedPage, {
+        name: layer.name,
+        action: layer.action,
+        properties: layer.properties,
+        pageId: selectedPage,
+      });
+      setLayers((prev) =>
+        prev.map((l) =>
+          l.properties.imgUrl === layer.properties.imgUrl && l.action === layer.action
+            ? { ...savedLayer, saved: true }
+            : l
+        )
+      );
+      message.success("Layer saved successfully!");
     } catch (error) {
-      console.error("Error adding layer:", error)
-      setError("Failed to add layer. Please try again.")
+      console.error("Error saving layer:", error);
+      message.error("Failed to save layer. Please try again.");
     }
-  }
+  };
 
-  const handleDeleteLayer = async (layerId, e) => {
-    if (!pageId) return
-
-    e.stopPropagation() 
-
-    try {
-      await deleteLayer(pageId, layerId)
-      setLayers((prev) => prev.filter((layer) => layer.id !== layerId))
-    } catch (error) {
-      console.error("Error deleting layer:", error)
-      setError("Failed to delete layer. Please try again.")
-    }
-  }
-
-  const handleActionClick = (actionName, layerId, e) => {
-    e.stopPropagation()
- 
-    console.log(`Action "${actionName}" performed on layer ID: ${layerId}`)
-   
-  }
+  const handleSelectLayer = useCallback(
+    (layer) => {
+      setSelectedLayer(layer);
+      setSelectedAsset({
+        type: layer.properties.type || "image",
+        src: layer.properties.imgUrl,
+      });
+      setSelectedAction(layer.action === "none" ? null : layer.action);
+      setAssetPosition(layer.properties.positionOrigin);
+      setAssetSize({
+        width: parseInt(layer.properties.size[0]),
+        height: parseInt(layer.properties.size[1]),
+      });
+      setLayerProperties({
+        ...layer.properties,
+        rotationAngle: layer.properties.rotationAngle || 0,
+      });
+    },
+    [setSelectedLayer, setSelectedAsset, setSelectedAction, setAssetPosition, setAssetSize, setLayerProperties]
+  );
 
   return (
-    <div className="file-list-section">
-      <div className="layer-list">
-        <h3>LAYERS</h3>
-        <div className="layer-input-container">
-          <input
-            type="text"
-            value={newLayerName}
-            onChange={(e) => setNewLayerName(e.target.value)}
-            placeholder="Enter new layer name"
-          />
-          <button onClick={handleAddLayer} disabled={!newLayerName || isLoading}>
-            Add Layer
-          </button>
-        </div>
-
-        {error && <p className="error-message">{error}</p>}
-
-        {isLoading ? (
-          <p>Loading layers...</p>
+    <div className="layer-list-container">
+      <div className="header">
+        <h2>LAYERS</h2>
+      </div>
+      <div className="layer-grid">
+        {layers.length === 0 ? (
+          <p>No layers available. Select an asset to create a layer.</p>
         ) : (
-          <ul className="layers-container">
-            {layers.length > 0 ? (
-              layers.map((layer) => (
-                <li key={layer.id} className="layer-list-item">
-                  <div className="layer-item" onClick={() => toggleExpand(layer.id)}>
-                    <span className="layer-arrow">
-                      {expanded[layer.id] ? (
-                        <img src={arrowDown} alt="Expand" width="8" height="8" />
-                      ) : (
-                        <img src={arrowRight} alt="Collapse" width="8" height="8" />
-                      )}
-                    </span>
-                    <span className="layer-name">{layer.name}</span>
-                    <FaTrash className="delete-icon" onClick={(e) => handleDeleteLayer(layer.id, e)} />
+          <Collapse accordion>
+            {layers.map((layer) => (
+              <Panel
+                header={
+                  <div
+                    className={`layer-header ${selectedLayer?._id === layer._id ? "selected" : ""}`}
+                    onClick={() => handleSelectLayer(layer)}
+                  >
+                    {layer.name}
+                    {!layer.saved && (
+                      <Button
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveLayer(layer);
+                        }}
+                        aria-label={`Save layer ${layer.name}`}
+                        style={{ marginLeft: "8px" }}
+                      >
+                        Save
+                      </Button>
+                    )}
                   </div>
-
-                  {expanded[layer.id] && (
-                    <ul className="nested">
-                      {/* this is just for demo purpose */}
-                      {demoActions.map(action => (
-                        <li key={action.id} className="nested-item action-item">
-                          <div 
-                            className="action-button"
-                            onClick={(e) => handleActionClick(action.name, layer.id, e)}
-                          >
-                            <span className="action-icon">{action.icon}</span>
-                            <span className="action-name">{action.name}</span>
-                          </div>
-                        </li>
-                      ))}
-                      
-                     
-                      {layer.children && layer.children.length > 0 && 
-                        layer.children.map((child, index) => (
-                          <li key={`child-${index}`} className="nested-item">
-                            {child}
-                            <FaTrash 
-                              className="delete-icon" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteChild(layer.id, index);
-                              }} 
-                            />
-                          </li>
-                        ))
-                      }
-                    </ul>
-                  )}
-                </li>
-              ))
-            ) : (
-              <p>No layers available</p>
-            )}
-          </ul>
+                }
+                key={layer._id || layer.properties.imgUrl + layer.action}
+              >
+                <div className="layer-action">
+                  <p>Action: {layer.action}</p>
+                </div>
+              </Panel>
+            ))}
+          </Collapse>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default LayerList
+export default Layers;
