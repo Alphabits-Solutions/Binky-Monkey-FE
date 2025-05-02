@@ -14,6 +14,7 @@ import Asset from "./components/home/assets/assets";
 import Audio from "./components/home/audio/Audio";
 import Object from "./components/home/objects/objects";
 import More from "./components/home/more/more";
+import ColoringGameApp from "./pages/ColoringGameApp";
 import HomeDashboard from "./pages/HomeDashboard";
 import { AppProvider } from "./context/AppContext";
 
@@ -30,7 +31,8 @@ const App = () => {
             <Route path="/layer" element={<Layers />} />
             <Route path="/asset" element={<Asset />} />
             <Route path="/audio" element={<Audio />} />
-            <Route path="object" element={<Object />} />
+            <Route path="/object" element={<Object />} />
+            {/* <Route path="/object" element={<ColoringGameApp />} /> */}
             <Route path="more" element={<More />} />
           </Route>
           {/* <Route path="/" element={<Dashboard />} >

@@ -1,5 +1,5 @@
 import { Layout } from "antd";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/HomeSider";
 import RightSidebar from "../components/RightSidebar";
 import Navbar from "../components/home/header";
@@ -21,6 +21,8 @@ const DashboardLayout = () => {
   const canvasRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const location = useLocation();
+  const path = location.pathname;
 
   const drawAsset = (ctx, img) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -87,7 +89,7 @@ const DashboardLayout = () => {
         <Sider width={100} className="sidebar" collapsible={false}>
           <Sidebar />
         </Sider>
-        <RightSidebar />
+        {path === "/object" ? <></> : <RightSidebar />}
         <Content className="content">
           <div className="asset-manager">
             {selectedPage ? (

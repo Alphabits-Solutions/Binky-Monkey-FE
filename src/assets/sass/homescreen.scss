@@ -571,4 +571,27 @@
       }
     }
   }
+
+  .action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    
+    button {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px;
+      border: none;
+      background: #f4f4f4;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+
   

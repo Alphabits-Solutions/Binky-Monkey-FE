@@ -112,7 +112,7 @@ const RightSidebar = () => {
         <h3>LAYOUT</h3>
         {selectedAction && actionFields[selectedAction]}
       </div>
-      <div className="color-section">
+      {/* <div className="color-section">
         <label>Color</label>
         <div className="color-picker">
           <input
@@ -135,7 +135,7 @@ const RightSidebar = () => {
           <span>{strokeColor}</span>
           <span>100%</span>
         </div>
-      </div>
+      </div> */}
       <div className="action">
         <h3>ACTIONS</h3>
         <div className="action-list">
