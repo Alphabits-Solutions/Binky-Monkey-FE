@@ -140,8 +140,7 @@ export const getAllLayers = async (pageId) => {
 };
 
 export const createLayer = async ( layerData) => {
-  const response = await api.post(`/layers`, layerData, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  const response = await api.post(`/layer`, layerData, {
   });
   return response.data;
 };

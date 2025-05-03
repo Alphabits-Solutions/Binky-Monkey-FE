@@ -46,6 +46,7 @@ const RightSidebar = () => {
       positionDestination: shadowPosition || { x: assetPosition.x + 50, y: assetPosition.y + 50 },
       bearer: vibrationIntensity,
       audioUrl: audioUrl,
+      rotationAngle: rotationAngle,
     }));
   }, [
     selectedAsset,
@@ -56,6 +57,7 @@ const RightSidebar = () => {
     shadowPosition,
     vibrationIntensity,
     audioUrl,
+    rotationAngle,
     setLayerProperties,
   ]);
 
@@ -66,10 +68,18 @@ const RightSidebar = () => {
         ...prev,
         [axis]: value,
       }));
+      setLayerProperties((prev) => ({
+        ...prev,
+        positionOrigin: { ...prev.positionOrigin, [axis]: value },
+      }));
     } else if (target === "shadow") {
       setShadowPosition((prev) => ({
         ...prev,
         [axis]: value,
+      }));
+      setLayerProperties((prev) => ({
+        ...prev,
+        positionDestination: { ...prev.positionDestination, [axis]: value },
       }));
     }
   };
@@ -79,6 +89,13 @@ const RightSidebar = () => {
     setAssetSize((prev) => ({
       ...prev,
       [dimension]: value,
+    }));
+    setLayerProperties((prev) => ({
+      ...prev,
+      size: [
+        dimension === "width" ? `${value}px` : prev.size[0],
+        dimension === "height" ? `${value}px` : prev.size[1],
+      ],
     }));
   };
 

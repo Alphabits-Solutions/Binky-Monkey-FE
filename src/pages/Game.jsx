@@ -5,6 +5,7 @@ import Pages from "../components/home/pages";
 import Layers from "../components/home/layerList";
 import Assets from "../components/home/assetFileList";
 import { AppContext } from "../context/AppContext";
+import { Button } from "antd";
 import "../assets/sass/homescreen.scss";
 
 const GameComponent = () => {
@@ -36,7 +37,8 @@ const GameComponent = () => {
     // Draw all layers
     layers.forEach((layer) => {
       if (layer.properties.imgUrl) {
-        if (layer.properties.type === "video") {
+        const layerType = layer.properties.type || (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
+        if (layerType === "video") {
           const video = document.createElement("video");
           video.src = layer.properties.imgUrl;
           video.onloadeddata = () => {
@@ -47,6 +49,18 @@ const GameComponent = () => {
               parseInt(layer.properties.size[0]),
               parseInt(layer.properties.size[1])
             );
+            // Draw shadow for drag action
+            if (layer.action === "drag" && layer.properties.positionDestination) {
+              ctx.globalAlpha = 0.5;
+              ctx.drawImage(
+                video,
+                layer.properties.positionDestination.x,
+                layer.properties.positionDestination.y,
+                parseInt(layer.properties.size[0]),
+                parseInt(layer.properties.size[1])
+              );
+              ctx.globalAlpha = 1.0;
+            }
           };
         } else {
           const img = new Image();
@@ -71,6 +85,18 @@ const GameComponent = () => {
               parseInt(layer.properties.size[0]),
               parseInt(layer.properties.size[1])
             );
+            // Draw shadow for drag action
+            if (layer.action === "drag" && layer.properties.positionDestination) {
+              ctx.globalAlpha = 0.5;
+              ctx.drawImage(
+                img,
+                layer.properties.positionDestination.x,
+                layer.properties.positionDestination.y,
+                parseInt(layer.properties.size[0]),
+                parseInt(layer.properties.size[1])
+              );
+              ctx.globalAlpha = 1.0;
+            }
             ctx.restore();
           };
         }
@@ -145,14 +171,13 @@ const GameComponent = () => {
     if (
       selectedAction === "drag" &&
       selectedAsset &&
-      !shadowPosition &&
-      layerProperties.positionOrigin
+      !shadowPosition
     ) {
-      setShadowPosition(layerProperties.positionDestination);
+      setShadowPosition({ x: assetPosition.x + 50, y: assetPosition.y + 50 });
     } else if (selectedAction !== "drag") {
       setShadowPosition(null);
     }
-  }, [selectedAction, selectedAsset, shadowPosition, layerProperties, setShadowPosition]);
+  }, [selectedAction, selectedAsset, shadowPosition, setShadowPosition, assetPosition]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -204,7 +229,7 @@ const GameComponent = () => {
       });
       setLayerProperties({
         ...clickedLayer.properties,
-        rotationAngle: clickedLayer.properties.rotationAngle || 0,
+        rotationAngle: layer.properties.rotationAngle || 0,
       });
     } else if (
       shadowPosition &&
@@ -258,6 +283,10 @@ const GameComponent = () => {
         positionDestination: newPosition,
       }));
     }
+
+    // Redraw canvas immediately to reflect drag
+    const ctx = canvas.getContext("2d");
+    drawLayers(ctx);
   };
 
   const handleMouseUp = () => {
@@ -284,6 +313,13 @@ const GameComponent = () => {
         </div>
       )}
       <div style={{ flex: 1, padding: "20px" }}>
+        <div style={{display:"inline-flex", width:"100%", alignItems:"center", justifyContent:"space-between", marginBottom:"20px"}}>
+          {selectedPage}
+          <div style={{display:"inline-flex", gap:"10px"}}>
+            <Button>Preview</Button>
+            <Button type="primary">Save</Button>
+          </div>
+        </div>
         <canvas
           ref={canvasRef}
           id="asset-canvas"
