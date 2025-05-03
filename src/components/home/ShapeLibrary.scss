@@ -1,0 +1,191 @@
+// ShapeLibrary.scss
+.shape-library {
+  display: flex;
+  flex-direction: column;
+  width: 20em;
+  height: 90vh;
+  padding: 10px;
+  background: #fff;
+  position: absolute;
+  left: 90px;
+  top: 5em;
+  overflow-y: auto;
+  border-right: 1px solid #ddd;
+
+  .tabs {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+
+    button {
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 5px 10px;
+      color: #888;
+
+      &.active {
+        color: #333;
+        border-bottom: 2px solid #333;
+      }
+    }
+  }
+
+  .search-bar {
+    margin-bottom: 15px;
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      outline: none;
+
+      &:focus {
+        border-color: #999;
+      }
+    }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .add-media {
+    width: 100%;
+    height: 140px;
+    border: 2px dashed #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #666;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #f9f9f9;
+    }
+    
+    &:active {
+      background-color: #f0f0f0;
+    }
+  }
+
+  .file-card {
+    width: 100%;
+    height: 140px;
+    margin: 5px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: white;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: grab !important;
+    user-select: none;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    &:active {
+      cursor: grabbing !important;
+    }
+    
+    &.dragging {
+      opacity: 0.6;
+      box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .shape-preview {
+      width: 80%;
+      height: 80%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .shape-name {
+      margin-top: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 90%;
+    }
+
+    .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: red;
+      color: white;
+      border: none;
+      padding: 3px 6px;
+      cursor: pointer;
+      font-size: 11px;
+      border-radius: 3px;
+      z-index: 5;
+
+      &:hover {
+        background: #c50000;
+      }
+    }
+  }
+
+  .error-message {
+    margin-top: 10px;
+    color: red;
+    font-size: 12px;
+    padding: 8px;
+    background-color: #ffeeee;
+    border-radius: 4px;
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .refresh-button {
+    margin-top: 15px;
+    text-align: center;
+    width: 100%;
+    
+    button {
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      color: #666;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        color: #333;
+      }
+      
+      svg {
+        margin-right: 5px;
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+}

@@ -6,11 +6,15 @@ import Layers from "../components/home/layerList";
 import Assets from "../components/home/assetFileList";
 import { AppContext } from "../context/AppContext";
 import { Button } from "antd";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { getAllPages, getAllLayers } from "../services/api";
 import "../assets/sass/homescreen.scss";
 
 const GameComponent = () => {
   const {
+    selectedActivity,
     selectedPage,
+    setSelectedPage,
     pageName,
     selectedAsset,
     selectedAction,
@@ -21,9 +25,12 @@ const GameComponent = () => {
     assetSize,
     selectedTab,
     layers,
+    setLayers,
     selectedLayer,
     layerProperties,
     setLayerProperties,
+    selectedSlideId,
+    setSelectedSlideId,
   } = useContext(AppContext);
 
   const canvasRef = useRef(null);
@@ -34,12 +41,96 @@ const GameComponent = () => {
   const [previewPositions, setPreviewPositions] = useState([]);
   const [vibratingLayer, setVibratingLayer] = useState(null);
   
+  // New states for enhanced preview mode
+  const [allPages, setAllPages] = useState([]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [pageLayersMap, setPageLayersMap] = useState({});
+  
   // Cache for images to prevent flickering
   const imageCache = useRef({});
 
+  // Fetch all pages for the activity
+  const fetchAllPages = async () => {
+    if (!selectedActivity) return;
+    
+    try {
+      const pages = await getAllPages(selectedActivity);
+      setAllPages(Array.isArray(pages) ? pages : []);
+    } catch (error) {
+      console.error("Failed to fetch pages:", error);
+    }
+  };
+
+  // Load layers for a specific page
+  const loadLayersForPage = async (pageId) => {
+    if (!pageId) return null;
+    
+    try {
+      const result = await getAllLayers(pageId);
+      const processedLayers = (Array.isArray(result) ? result : []).map((layer) => ({
+        ...layer,
+        saved: true,
+        properties: {
+          ...layer.properties,
+          type: layer.properties.type || (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
+        },
+      }));
+      
+      return processedLayers;
+    } catch (error) {
+      console.error(`Failed to load layers for page ${pageId}:`, error);
+      return [];
+    }
+  };
+
+  // Load layers for all pages (for preview mode)
+  const loadAllPagesLayers = async () => {
+    if (allPages.length === 0) return;
+    
+    const layersMap = {};
+    
+    for (const page of allPages) {
+      const pageLayers = await loadLayersForPage(page._id);
+      if (pageLayers) {
+        layersMap[page._id] = pageLayers;
+      }
+    }
+    
+    setPageLayersMap(layersMap);
+  };
+
+  // Initialize current page index based on selected page
+  useEffect(() => {
+    if (previewMode && allPages.length > 0 && selectedPage) {
+      const index = allPages.findIndex(page => page._id === selectedPage);
+      if (index !== -1) {
+        setCurrentPageIndex(index);
+      }
+    }
+  }, [previewMode, allPages, selectedPage]);
+
+  // Fetch all pages when activity changes or preview mode is entered
+  useEffect(() => {
+    if (selectedActivity) {
+      fetchAllPages();
+    }
+  }, [selectedActivity]);
+
+  // Load all pages' layers when entering preview mode
+  useEffect(() => {
+    if (previewMode && allPages.length > 0) {
+      loadAllPagesLayers();
+    }
+  }, [previewMode, allPages]);
+
   // Preload images to prevent flickering
   const preloadImages = () => {
-    layers.forEach(layer => {
+    // Preload current page layers
+    const currentLayers = previewMode && allPages[currentPageIndex] 
+      ? pageLayersMap[allPages[currentPageIndex]._id] || []
+      : layers;
+    
+    currentLayers.forEach(layer => {
       if (layer.properties.imgUrl && !imageCache.current[layer.properties.imgUrl]) {
         const img = new Image();
         img.src = layer.properties.imgUrl;
@@ -64,12 +155,52 @@ const GameComponent = () => {
     setPreviewMode(newPreviewMode);
     
     if (newPreviewMode) {
-      // Initialize preview positions when entering preview mode
+      // Initialize preview positions for all layers when entering preview mode
       const initialPositions = layers.map((layer, index) => ({
         index: index,
         position: { ...layer.properties.positionOrigin },
       }));
       setPreviewPositions(initialPositions);
+    } else {
+      // When exiting preview mode, ensure we reset to the currently viewed page
+      if (allPages[currentPageIndex]) {
+        setSelectedPage(allPages[currentPageIndex]._id);
+        setSelectedSlideId(allPages[currentPageIndex]._id);
+        // Load the layers for the current page back into the main state
+        if (pageLayersMap[allPages[currentPageIndex]._id]) {
+          setLayers(pageLayersMap[allPages[currentPageIndex]._id]);
+        }
+      }
+    }
+  };
+
+  // Go to next page in preview mode
+  const goToNextPage = () => {
+    if (currentPageIndex < allPages.length - 1) {
+      setCurrentPageIndex(currentPageIndex + 1);
+      // Reset preview positions for the new page
+      const newPageLayers = pageLayersMap[allPages[currentPageIndex + 1]._id] || [];
+      const initialPositions = newPageLayers.map((layer, index) => ({
+        index: index,
+        position: { ...layer.properties.positionOrigin },
+      }));
+      setPreviewPositions(initialPositions);
+      setVibratingLayer(null);
+    }
+  };
+
+  // Go to previous page in preview mode
+  const goToPreviousPage = () => {
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex(currentPageIndex - 1);
+      // Reset preview positions for the new page
+      const newPageLayers = pageLayersMap[allPages[currentPageIndex - 1]._id] || [];
+      const initialPositions = newPageLayers.map((layer, index) => ({
+        index: index,
+        position: { ...layer.properties.positionOrigin },
+      }));
+      setPreviewPositions(initialPositions);
+      setVibratingLayer(null);
     }
   };
 
@@ -132,8 +263,13 @@ const GameComponent = () => {
   const drawLayers = (ctx) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    // Get the current layers based on mode and page
+    const currentLayers = previewMode && allPages[currentPageIndex] 
+      ? pageLayersMap[allPages[currentPageIndex]._id] || []
+      : layers;
+
     // Draw all layers
-    layers.forEach((layer, index) => {
+    currentLayers.forEach((layer, index) => {
       if (layer.properties.imgUrl) {
         // Determine current position based on mode
         const currentPosition = getPreviewPosition(layer, index);
@@ -304,11 +440,11 @@ const GameComponent = () => {
   // Preload images when layers or selected asset changes
   useEffect(() => {
     preloadImages();
-  }, [layers, selectedAsset]);
+  }, [layers, selectedAsset, currentPageIndex, pageLayersMap]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
-    if (selectedPage && canvasRef.current) {
+    if ((selectedPage || (previewMode && allPages.length > 0)) && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       drawLayers(ctx);
@@ -324,7 +460,10 @@ const GameComponent = () => {
     layerProperties,
     previewMode,
     previewPositions,
-    vibratingLayer
+    vibratingLayer,
+    currentPageIndex,
+    pageLayersMap,
+    allPages
   ]);
 
   const handleMouseDown = (e) => {
@@ -333,11 +472,16 @@ const GameComponent = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Get the current layers based on mode and page
+    const currentLayers = previewMode && allPages[currentPageIndex] 
+      ? pageLayersMap[allPages[currentPageIndex]._id] || []
+      : layers;
+
     if (previewMode) {
       // In preview mode, check if clicking any draggable layer
       let foundLayer = false;
       
-      layers.forEach((layer, index) => {
+      currentLayers.forEach((layer, index) => {
         if (layer.action === "drag") {
           const position = getPreviewPosition(layer, index);
           
@@ -424,7 +568,11 @@ const GameComponent = () => {
     if (previewMode) {
       // Preview mode drag logic
       if (typeof draggingAsset === 'number') {
-        const layer = layers[draggingAsset];
+        const currentLayers = allPages[currentPageIndex] 
+          ? pageLayersMap[allPages[currentPageIndex]._id] || []
+          : [];
+        
+        const layer = currentLayers[draggingAsset];
         if (!layer) return;
         
         const newPosition = {
@@ -483,7 +631,11 @@ const GameComponent = () => {
 
   const handleMouseUp = () => {
     if (previewMode && isDragging && typeof draggingAsset === 'number') {
-      const layer = layers[draggingAsset];
+      const currentLayers = allPages[currentPageIndex] 
+        ? pageLayersMap[allPages[currentPageIndex]._id] || []
+        : [];
+      
+      const layer = currentLayers[draggingAsset];
       
       if (layer && layer.action === "drag" && layer.properties.positionDestination) {
         const currentPosition = previewPositions[draggingAsset].position;
@@ -512,54 +664,169 @@ const GameComponent = () => {
     setDraggingAsset(null);
   };
 
+  // Get current page title for preview mode
+  const getCurrentPageTitle = () => {
+    if (previewMode && allPages[currentPageIndex]) {
+      return allPages[currentPageIndex].title;
+    }
+    return pageName;
+  };
+
   return (
-    <div className="asset-manager" style={{ display: "flex" }}>
-      <Sider />
-      {selectedTab === "1" && (
-        <div style={{ width: 300, overflowY: "auto" }}>
-          <Pages />
-        </div>
-      )}
-      {selectedTab === "2" && (
-        <div style={{ width: 300, overflowY: "auto" }}>
-          <Layers />
-        </div>
-      )}
-      {selectedTab === "3" && (
-        <div style={{ width: 300, overflowY: "auto" }}>
-          <Assets />
-        </div>
-      )}
-      <div style={{ flex: 1, padding: "20px" }}>
-        <div style={{display:"inline-flex", width:"100%", alignItems:"center", justifyContent:"space-between", marginBottom:"20px"}}>
-          <div>{pageName} </div>
-          <div style={{display:"inline-flex", gap:"10px"}}>
+    <div className="asset-manager" style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* Preview mode layout - full screen with no sidebars */}
+      {previewMode ? (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "20px" }}>
+          <div style={{
+            display: "flex", 
+            width: "100%", 
+            alignItems: "center", 
+            justifyContent: "space-between", 
+            marginBottom: "20px"
+          }}>
+            <div style={{ fontSize: "18px", fontWeight: "bold" }}>
+              Preview: {getCurrentPageTitle()} ({currentPageIndex + 1}/{allPages.length})
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <Button 
+                type="primary" 
+                onClick={togglePreviewMode}
+              >
+                Exit Preview
+              </Button>
+            </div>
+          </div>
+          <div style={{ 
+            flex: 1, 
+            display: "flex", 
+            justifyContent: "center", 
+            alignItems: "center", 
+            background: "#F9F6F2",
+            position: "relative"
+          }}>
+            {/* Previous button on left side of canvas */}
             <Button
-              type={previewMode ? "primary" : "default"} 
-              onClick={togglePreviewMode}
-            >
-              {previewMode ? "Exit Preview" : "Preview"}
-            </Button>
-            <Button type="primary">Save</Button>
+              type="primary"
+              shape="circle"
+              icon={<LeftOutlined />}
+              onClick={goToPreviousPage}
+              disabled={currentPageIndex === 0}
+              style={{
+                position: "absolute",
+                left: 450,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+                width: 60,
+                height: 60,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                background:"#7e2807",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+              }}
+            />
+            
+            <canvas
+              ref={canvasRef}
+              id="asset-canvas"
+              width={800}
+              height={600}
+              style={{ 
+                border: "1px solid #ccc", 
+                background: "#fff",
+                cursor: isDragging ? "grabbing" : "grab"
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+            
+            {/* Next button on right side of canvas */}
+            <Button
+              type="primary"
+              shape="circle"
+              icon={<RightOutlined />}
+              onClick={goToNextPage}
+              disabled={currentPageIndex >= allPages.length - 1}
+              style={{
+                position: "absolute",
+                right: 450,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+                width: 60,
+                height: 60,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                background:"#7e2807",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+              }}
+            />
           </div>
         </div>
-        <canvas
-          ref={canvasRef}
-          id="asset-canvas"
-          width={800}
-          height={600}
-          style={{ 
-            border: "1px solid #ccc", 
-            background: "#fff",
-            cursor: isDragging ? "grabbing" : (previewMode ? "grab" : "default")
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        />
-      </div>
-      <RightSidebar />
+      ) : (
+        /* Normal edit mode layout with sidebars */
+        <div style={{ display: "flex", flex: 1 }}>
+          <Sider />
+          {selectedTab === "1" && (
+            <div style={{ width: 300, overflowY: "auto" }}>
+              <Pages />
+            </div>
+          )}
+          {selectedTab === "2" && (
+            <div style={{ width: 300, overflowY: "auto" }}>
+              <Layers />
+            </div>
+          )}
+          {selectedTab === "3" && (
+            <div style={{ width: 300, overflowY: "auto" }}>
+              <Assets />
+            </div>
+          )}
+          <div style={{ flex: 1, padding: "20px" }}>
+            <div style={{
+              display: "inline-flex", 
+              width: "100%", 
+              alignItems: "center", 
+              justifyContent: "space-between", 
+              marginBottom: "20px"
+            }}>
+              <div>
+                {pageName}
+              </div>
+              <div style={{ display: "inline-flex", gap: "10px" }}>
+                <Button 
+                  type="primary" 
+                  onClick={togglePreviewMode}
+                  disabled={!selectedPage}
+                >
+                  Preview
+                </Button>
+                <Button type="primary">Save</Button>
+              </div>
+            </div>
+            <canvas
+              ref={canvasRef}
+              id="asset-canvas"
+              width={800}
+              height={600}
+              style={{ 
+                border: "1px solid #ccc", 
+                background: "#fff",
+                cursor: isDragging ? "grabbing" : "default"
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+          </div>
+          <RightSidebar />
+        </div>
+      )}
     </div>
   );
 };
