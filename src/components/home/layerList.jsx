@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useContext } from "react";
 import { SaveOutlined } from "@ant-design/icons";
 import { AppContext } from "../../context/AppContext";
-import { getAllLayers, createLayer } from "../../services/api";
+import { createLayer } from "../../services/api";
 import { message, Button, Collapse } from "antd";
 
 const { Panel } = Collapse;
@@ -22,38 +22,6 @@ const Layers = () => {
     setAssetPosition,
     setAssetSize,
   } = useContext(AppContext);
-
-  const loadLayers = useCallback(async () => {
-    if (!selectedPage) {
-      console.log("No selectedPage, clearing layers");
-      setLayers([]);
-      return;
-    }
-    try {
-      console.log("Fetching layers for pageId:", selectedPage);
-      const result = await getAllLayers(selectedPage);
-      console.log("API response:", result);
-      // Assume result is an array of layers
-      const apiLayers = (Array.isArray(result) ? result : []).map((layer) => ({
-        ...layer,
-        saved: true,
-        properties: {
-          ...layer.properties,
-          type: layer.properties.type || (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
-        },
-      }));
-      console.log("Processed layers:", apiLayers);
-      setLayers(apiLayers);
-    } catch (error) {
-      console.error("Failed to load layers:", error);
-      message.error("Failed to load layers. Please try again.");
-      setLayers([]);
-    }
-  }, [selectedPage, setLayers]);
-
-  useEffect(() => {
-    loadLayers();
-  }, [loadLayers]);
 
   // Create a new layer when asset, action, and properties are set
   useEffect(() => {

@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useContext } from "react";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { AppContext } from "../../context/AppContext";
-import { createPage, getAllPages, updatePage, deletePage } from "../../services/api";
+import { createPage, getAllPages, updatePage, deletePage, getAllLayers } from "../../services/api";
 import { message, Modal, Input, Button } from "antd";
 
 const Pages = () => {
-  const { selectedActivity, setSelectedPage, selectedSlideId, setSelectedSlideId, pageName, setPageName  } = useContext(AppContext);
+  const { selectedActivity, setSelectedPage, selectedSlideId, setSelectedSlideId, pageName, setPageName, setLayers } = useContext(AppContext);
   const [slides, setSlides] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
@@ -19,6 +19,33 @@ const Pages = () => {
       message.error("Failed to load pages. Please try again.");
     }
   }, [selectedActivity]);
+
+  const loadLayers = useCallback(async (pageId) => {
+    if (!pageId) {
+      console.log("No pageId, clearing layers");
+      setLayers([]);
+      return;
+    }
+    try {
+      console.log("Fetching layers for pageId:", pageId);
+      const result = await getAllLayers(pageId);
+      console.log("API response:", result);
+      const apiLayers = (Array.isArray(result) ? result : []).map((layer) => ({
+        ...layer,
+        saved: true,
+        properties: {
+          ...layer.properties,
+          type: layer.properties.type || (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
+        },
+      }));
+      console.log("Processed layers:", apiLayers);
+      setLayers(apiLayers);
+    } catch (error) {
+      console.error("Failed to load layers:", error);
+      message.error("Failed to load layers. Please try again.");
+      setLayers([]);
+    }
+  }, [setLayers]);
 
   useEffect(() => {
     if (selectedActivity) {
@@ -72,6 +99,12 @@ const Pages = () => {
       await deletePage(pageId);
       setSlides((prev) => prev.filter((s) => s._id !== pageId));
       message.success("Page deleted successfully!");
+      if (selectedSlideId === pageId) {
+        setSelectedPage(null);
+        setSelectedSlideId(null);
+        setPageName("");
+        setLayers([]);
+      }
     } catch (error) {
       console.error("Error deleting page:", error);
       message.error("Failed to delete page. Please try again.");
@@ -83,7 +116,8 @@ const Pages = () => {
     setSelectedPage(id);
     setSelectedSlideId(id);
     setPageName(title);
-  }, [setSelectedPage, setSelectedSlideId]);
+    loadLayers(id); // Load layers immediately when a page is selected
+  }, [setSelectedPage, setSelectedSlideId, loadLayers]);
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
@@ -116,7 +150,7 @@ const Pages = () => {
               onClick={() => handleSelectSlide(slide._id, slide.title)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && handleSelectSlide(slide._id)}
+              onKeyDown={(e) => e.key === "Enter" && handleSelectSlide(slide._id, slide.title)}
               aria-label={`Select page ${slide.title}`}
             >
               <p>{slide.title}</p>
