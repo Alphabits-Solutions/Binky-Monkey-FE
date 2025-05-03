@@ -149,13 +149,15 @@ const AssetFileList = () => {
                     }}
                     style={{
                       position: "absolute",
-                      top: "10px",
-                      right: "10px",
+                      top: "5px",
+                      right: "5px",
                       background: "red",
                       color: "white",
                       border: "none",
-                      padding: "5px 10px",
+                      padding: "5px 5px",
                       cursor: "pointer",
+                      fontSize: "8px",
+                      display: "none",
                     }}
                   >
                     Delete
