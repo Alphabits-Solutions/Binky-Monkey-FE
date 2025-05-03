@@ -6,6 +6,7 @@ import Layers from "../components/home/layerList";
 import Assets from "../components/home/assetFileList";
 import { AppContext } from "../context/AppContext";
 import { Button } from "antd";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import "../assets/sass/homescreen.scss";
 
 const GameComponent = () => {
@@ -24,6 +25,9 @@ const GameComponent = () => {
     selectedLayer,
     layerProperties,
     setLayerProperties,
+    slides,
+    currentPageIndex,
+    switchPage,
   } = useContext(AppContext);
 
   const canvasRef = useRef(null);
@@ -71,6 +75,16 @@ const GameComponent = () => {
       }));
       setPreviewPositions(initialPositions);
     }
+  };
+
+  // Handle navigation to previous page
+  const handlePreviousPage = () => {
+    switchPage("prev");
+  };
+
+  // Handle navigation to next page
+  const handleNextPage = () => {
+    switchPage("next");
   };
 
   // Apply vibration effect
@@ -515,51 +529,104 @@ const GameComponent = () => {
   return (
     <div className="asset-manager" style={{ display: "flex" }}>
       <Sider />
-      {selectedTab === "1" && (
+      {!previewMode && selectedTab === "1" && (
         <div style={{ width: 300, overflowY: "auto" }}>
           <Pages />
         </div>
       )}
-      {selectedTab === "2" && (
+      {!previewMode && selectedTab === "2" && (
         <div style={{ width: 300, overflowY: "auto" }}>
           <Layers />
         </div>
       )}
-      {selectedTab === "3" && (
+      {!previewMode && selectedTab === "3" && (
         <div style={{ width: 300, overflowY: "auto" }}>
           <Assets />
         </div>
       )}
-      <div style={{ flex: 1, padding: "20px" }}>
-        <div style={{display:"inline-flex", width:"100%", alignItems:"center", justifyContent:"space-between", marginBottom:"20px"}}>
-          <div>{pageName} </div>
-          <div style={{display:"inline-flex", gap:"10px"}}>
+      <div style={{ 
+        flex: 1, 
+        padding: "20px", 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center" 
+      }}>
+        <div style={{
+          display: "inline-flex", 
+          width: "100%", 
+          maxWidth: "800px", 
+          alignItems: "center", 
+          justifyContent: "space-between", 
+          marginBottom: "20px"
+        }}>
+          <div>{pageName}</div>
+          <div style={{ display: "inline-flex", gap: "10px" }}>
             <Button
               type={previewMode ? "primary" : "default"} 
               onClick={togglePreviewMode}
             >
               {previewMode ? "Exit Preview" : "Preview"}
             </Button>
-            <Button type="primary">Save</Button>
+            {!previewMode && (
+              <Button type="primary">Save</Button>
+            )}
           </div>
         </div>
-        <canvas
-          ref={canvasRef}
-          id="asset-canvas"
-          width={800}
-          height={600}
-          style={{ 
-            border: "1px solid #ccc", 
-            background: "#fff",
-            cursor: isDragging ? "grabbing" : (previewMode ? "grab" : "default")
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        />
+        <div style={{ position: "relative", width: "800px" }}>
+          {previewMode && slides.length > 1 && (
+            <>
+              <Button
+                shape="circle"
+                icon={<LeftOutlined />}
+                onClick={handlePreviousPage}
+                disabled={currentPageIndex === 0}
+                style={{
+                  position: "absolute",
+                  left: "-50px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  backgroundColor: "#8B4513",
+                  borderColor: "#8B4513",
+                  color: "#fff",
+                  zIndex: 10,
+                }}
+              />
+              <Button
+                shape="circle"
+                icon={<RightOutlined />}
+                onClick={handleNextPage}
+                disabled={currentPageIndex === slides.length - 1}
+                style={{
+                  position: "absolute",
+                  right: "-50px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  backgroundColor: "#8B4513",
+                  borderColor: "#8B4513",
+                  color: "#fff",
+                  zIndex: 10,
+                }}
+              />
+            </>
+          )}
+          <canvas
+            ref={canvasRef}
+            id="asset-canvas"
+            width={800}
+            height={600}
+            style={{ 
+              border: "1px solid #ccc", 
+              background: "#fff",
+              cursor: isDragging ? "grabbing" : (previewMode ? "grab" : "default")
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          />
+        </div>
       </div>
-      <RightSidebar />
+      {!previewMode && <RightSidebar />}
     </div>
   );
 };

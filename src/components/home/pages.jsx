@@ -1,63 +1,31 @@
-import { useState, useEffect, useCallback, useContext } from "react";
+import { useState, useCallback, useContext } from "react";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { AppContext } from "../../context/AppContext";
-import { createPage, getAllPages, updatePage, deletePage, getAllLayers } from "../../services/api";
+import { createPage, updatePage, deletePage } from "../../services/api";
 import { message, Modal, Input, Button } from "antd";
 
 const Pages = () => {
-  const { selectedActivity, setSelectedPage, selectedSlideId, setSelectedSlideId, pageName, setPageName, setLayers } = useContext(AppContext);
-  const [slides, setSlides] = useState([]);
+  const { 
+    selectedActivity, 
+    setSelectedPage, 
+    selectedSlideId, 
+    setSelectedSlideId, 
+    pageName, 
+    setPageName, 
+    setLayers, 
+    slides, 
+    setSlides,
+    currentPageIndex,
+    setCurrentPageIndex
+  } = useContext(AppContext);
+  
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
-
-  const loadPages = useCallback(async () => {
-    try {
-      const result = await getAllPages(selectedActivity);
-      setSlides(Array.isArray(result) ? result : []);
-    } catch (error) {
-      console.error("Failed to load pages:", error);
-      message.error("Failed to load pages. Please try again.");
-    }
-  }, [selectedActivity]);
-
-  const loadLayers = useCallback(async (pageId) => {
-    if (!pageId) {
-      console.log("No pageId, clearing layers");
-      setLayers([]);
-      return;
-    }
-    try {
-      console.log("Fetching layers for pageId:", pageId);
-      const result = await getAllLayers(pageId);
-      console.log("API response:", result);
-      const apiLayers = (Array.isArray(result) ? result : []).map((layer) => ({
-        ...layer,
-        saved: true,
-        properties: {
-          ...layer.properties,
-          type: layer.properties.type || (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
-        },
-      }));
-      console.log("Processed layers:", apiLayers);
-      setLayers(apiLayers);
-    } catch (error) {
-      console.error("Failed to load layers:", error);
-      message.error("Failed to load layers. Please try again.");
-      setLayers([]);
-    }
-  }, [setLayers]);
-
-  useEffect(() => {
-    if (selectedActivity) {
-      loadPages();
-    }
-  }, [selectedActivity, loadPages]);
 
   const handleAddSlide = async () => {
     try {
       await createPage({ title: "Untitled Page", activityId: selectedActivity });
       message.success("Page created successfully!");
-      loadPages();
     } catch (error) {
       console.error("Error creating page:", error);
       message.error("Failed to create page. Please try again.");
@@ -87,7 +55,6 @@ const Pages = () => {
       setIsModalVisible(false);
       setPageName("");
       setEditingPage(null);
-      loadPages();
     } catch (error) {
       console.error("Error updating page:", error);
       message.error("Failed to update page. Please try again.");
@@ -104,6 +71,7 @@ const Pages = () => {
         setSelectedSlideId(null);
         setPageName("");
         setLayers([]);
+        setCurrentPageIndex(-1);
       }
     } catch (error) {
       console.error("Error deleting page:", error);
@@ -116,8 +84,9 @@ const Pages = () => {
     setSelectedPage(id);
     setSelectedSlideId(id);
     setPageName(title);
-    loadLayers(id); // Load layers immediately when a page is selected
-  }, [setSelectedPage, setSelectedSlideId, loadLayers]);
+    const index = slides.findIndex(slide => slide._id === id);
+    setCurrentPageIndex(index !== -1 ? index : 0);
+  }, [setSelectedPage, setSelectedSlideId, slides]);
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
