@@ -5,11 +5,10 @@ import { createPage, getAllPages, updatePage, deletePage } from "../../services/
 import { message, Modal, Input, Button } from "antd";
 
 const Pages = () => {
-  const { selectedActivity, setSelectedPage, selectedSlideId, setSelectedSlideId } = useContext(AppContext);
+  const { selectedActivity, setSelectedPage, selectedSlideId, setSelectedSlideId, pageName, setPageName  } = useContext(AppContext);
   const [slides, setSlides] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
-  const [pageName, setPageName] = useState("");
 
   const loadPages = useCallback(async () => {
     try {
@@ -61,6 +60,7 @@ const Pages = () => {
       setIsModalVisible(false);
       setPageName("");
       setEditingPage(null);
+      loadPages();
     } catch (error) {
       console.error("Error updating page:", error);
       message.error("Failed to update page. Please try again.");
@@ -78,10 +78,11 @@ const Pages = () => {
     }
   };
 
-  const handleSelectSlide = useCallback((id) => {
+  const handleSelectSlide = useCallback((id, title) => {
     console.log("Selected Slide ID:", id);
     setSelectedPage(id);
     setSelectedSlideId(id);
+    setPageName(title);
   }, [setSelectedPage, setSelectedSlideId]);
 
   const handleModalCancel = () => {
@@ -112,7 +113,7 @@ const Pages = () => {
             <div
               key={slide._id}
               className={`slide-card ${selectedSlideId === slide._id ? 'selected' : ''}`}
-              onClick={() => handleSelectSlide(slide._id)}
+              onClick={() => handleSelectSlide(slide._id, slide.title)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === "Enter" && handleSelectSlide(slide._id)}
