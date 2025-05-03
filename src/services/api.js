@@ -87,6 +87,22 @@ export const deleteActivity = async (activityId) => {
   }
 };
 
+export const toggleActivityStatus = async (activityId, currentStatus) => {
+  try {
+    const response = await api.put(
+      `/activity/${activityId}`,
+      { isEnabled: !currentStatus },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error toggling activity status:", error.message || error);
+    throw new Error(
+      error.response?.data?.message || error.message || "Failed to toggle activity status."
+    );
+  }
+};
+
 export const createPage = async ( data) => {
   try {
     const response = await api.post(`/page`, data);

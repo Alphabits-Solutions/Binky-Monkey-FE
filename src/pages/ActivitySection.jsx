@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { Button, Card, Dropdown, Form, Input, message, Modal } from "antd";
+import { Button, Card, Dropdown, Form, Input, message, Modal, Select } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
@@ -9,6 +9,7 @@ import {
   deleteActivity,
   getAllActivities,
   updateActivity,
+  toggleActivityStatus,
 } from "../services/api";
 
 const ActivitySection = () => {
@@ -17,6 +18,7 @@ const ActivitySection = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [isAssignModal, setIsAssignModalOpen] = useState(false);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const navigate = useNavigate();
@@ -85,6 +87,23 @@ const ActivitySection = () => {
     }
   };
 
+  const handleToggleActivityStatus = async (activityId, currentStatus) => {
+    try {
+      await toggleActivityStatus(activityId, currentStatus);
+      message.success(
+        `Activity ${currentStatus ? "disabled" : "enabled"} successfully`
+      );
+      fetchActivities();
+    } catch (error) {
+      console.error("Failed to toggle activity status", error);
+      message.error("Failed to toggle activity status.");
+    }
+  };
+
+  const handleAssign = (activityId) => {
+    setIsAssignModalOpen(true);
+  };
+
   const handleCardClick = (activityId) => {
     setContextActivity(activityId);
     navigate(`/home`);
@@ -96,7 +115,7 @@ const ActivitySection = () => {
 
   return (
     <>
-      <div className="content-header">
+      <div className="content-header" style={{ padding: "2em" }}>
         <h2 className="title">Activity file</h2>
         <Button
           type="primary"
@@ -106,6 +125,35 @@ const ActivitySection = () => {
           Create New Activity
         </Button>
       </div>
+
+      <Modal
+        title="Select Instructor"
+        open={isAssignModal}
+        onCancel={() => {
+          setIsAssignModalOpen(false);
+        }} 
+        footer={null}
+      >
+        <Form layout="vertical" name="instructorForm">
+          <Form.Item
+            label="Select Instructor"
+            name="instructor"
+            rules={[
+              { required: true, message: "Please select an instructor!" },
+            ]}
+          >
+            <Select placeholder="Choose an instructor">
+              <Select.Option value="Alice Johnson">Alice Johnson</Select.Option>
+              <Select.Option value="Bob Smith">Bob Smith</Select.Option>
+              <Select.Option value="Carol Williams">
+                Carol Williams
+              </Select.Option>
+              <Select.Option value="David Brown">David Brown</Select.Option>
+              <Select.Option value="Eva Green">Eva Green</Select.Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Create Activity Modal */}
       <Modal
@@ -136,7 +184,9 @@ const ActivitySection = () => {
           <Form.Item
             name="description"
             label="Description"
-            rules={[{ max: 500, message: "Description cannot exceed 500 characters" }]}
+            rules={[
+              { max: 500, message: "Description cannot exceed 500 characters" },
+            ]}
           >
             <Input.TextArea
               placeholder="Enter activity description (optional)"
@@ -193,7 +243,9 @@ const ActivitySection = () => {
           <Form.Item
             name="description"
             label="Description"
-            rules={[{ max: 500, message: "Description cannot exceed 500 characters" }]}
+            rules={[
+              { max: 500, message: "Description cannot exceed 500 characters" },
+            ]}
           >
             <Input.TextArea
               placeholder="Enter activity description (optional)"
@@ -233,6 +285,20 @@ const ActivitySection = () => {
                 },
               },
               {
+                key: "toggle",
+                label: activity.isEnabled !== false ? "Disable" : "Enable",
+                onClick: () =>
+                  handleToggleActivityStatus(
+                    activity._id,
+                    activity.isEnabled !== false
+                  ),
+              },
+              {
+                key: "Assign",
+                label: "Assign",
+                onClick: () => handleAssign(activity._id),
+              },
+              {
                 key: "delete",
                 label: "Delete",
                 danger: true,
@@ -245,6 +311,11 @@ const ActivitySection = () => {
                 key={activity._id}
                 className="activity-card"
                 onClick={() => handleCardClick(activity._id)}
+                style={{
+                  opacity: activity.isEnabled !== false ? 1 : 0.5,
+                  cursor:
+                    activity.isEnabled !== false ? "pointer" : "not-allowed",
+                }}
               >
                 <div
                   style={{
@@ -262,7 +333,9 @@ const ActivitySection = () => {
                     </Dropdown>
                   </div>
                 </div>
-                <p style={{ marginTop: "15px" }}>{activity.title}</p>
+                <p style={{ marginTop: "15px", paddingRight: "25px" }}>
+                  {activity.title}
+                </p>
               </Card>
             );
           })

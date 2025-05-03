@@ -532,7 +532,7 @@ const GameComponent = () => {
       )}
       <div style={{ flex: 1, padding: "20px" }}>
         <div style={{display:"inline-flex", width:"100%", alignItems:"center", justifyContent:"space-between", marginBottom:"20px"}}>
-          <div>{selectedPage} </div>
+          <div>{pageName} </div>
           <div style={{display:"inline-flex", gap:"10px"}}>
             <Button
               type={previewMode ? "primary" : "default"} 
@@ -556,7 +556,7 @@ const GameComponent = () => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp} // Add this to handle mouse leaving canvas
+          onMouseLeave={handleMouseUp}
         />
       </div>
       <RightSidebar />
