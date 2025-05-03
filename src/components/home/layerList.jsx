@@ -33,6 +33,7 @@ const Layers = () => {
       console.log("Fetching layers for pageId:", selectedPage);
       const result = await getAllLayers(selectedPage);
       console.log("API response:", result);
+      // Assume result is an array of layers
       const apiLayers = (Array.isArray(result) ? result : []).map((layer) => ({
         ...layer,
         saved: true,
@@ -54,12 +55,11 @@ const Layers = () => {
     loadLayers();
   }, [loadLayers]);
 
-  // Create a new layer only when a new asset is selected (not when selecting an existing layer)
+  // Create a new layer when asset, action, and properties are set
   useEffect(() => {
     if (
       selectedPage &&
       selectedAsset &&
-      selectedAsset.source === "assets" && // Only create new layer for assets from Assets tab
       selectedAction &&
       layerProperties.imgUrl &&
       !layers.some(
@@ -129,7 +129,6 @@ const Layers = () => {
       setSelectedAsset({
         type: layer.properties.type || "image",
         src: layer.properties.imgUrl,
-        source: "layers", // Indicate this asset comes from a layer selection
       });
       setSelectedAction(layer.action === "none" ? null : layer.action);
       setAssetPosition(layer.properties.positionOrigin);
