@@ -6,6 +6,7 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [selectedActivity, setSelectedActivity] = useState("");
   const [selectedPage, setSelectedPage] = useState(null);
+  const [pageName, setPageName] = useState("");
   const [selectedSlideId, setSelectedSlideId] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
@@ -34,6 +35,8 @@ export const AppProvider = ({ children }) => {
         setSelectedTab,
         selectedPage,
         setSelectedPage,
+        pageName,
+        setPageName,
         selectedAction,
         setSelectedAction,
         selectedAsset,
