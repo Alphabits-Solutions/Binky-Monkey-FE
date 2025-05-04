@@ -4,10 +4,21 @@ import Sider from "../components/Sider";
 import Pages from "../components/home/pages";
 import Layers from "../components/home/layerList";
 import Assets from "../components/home/assetFileList";
+import ShapeLibrary from "../components/home/ShapeLibrary";
 import { AppContext } from "../context/AppContext";
 import { Button } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import "../assets/sass/homescreen.scss";
+import { enhanceSvgVisibility, applyFillsToSvgString, createFallbackSvg, isValidSvg } from "./utils";
+
+// Utility function to check if object is a File-like or Blob-like object
+const isFileOrBlob = (obj) => {
+  return obj && typeof obj === 'object' && 
+    ((obj instanceof File) || 
+     (obj instanceof Blob) || 
+     (obj.type && obj.size !== undefined) || 
+     (obj.name && obj.size !== undefined));
+};
 
 const GameComponent = () => {
   const {
@@ -23,23 +34,103 @@ const GameComponent = () => {
     selectedTab,
     layers,
     selectedLayer,
+    setSelectedLayer,
     layerProperties,
     setLayerProperties,
     slides,
     currentPageIndex,
     switchPage,
+    // Color fill related context
+    previewMode,
+    setPreviewMode,
+    canvasShapes,
+    setCanvasShapes,
+    canvasRef,
+    draggedShapeRef,
+    toolbarPosition,
+    setToolbarPosition,
+    isDraggingToolbar,
+    setIsDraggingToolbar,
+    toolbarDragStartRef,
+    selectedColors,
+    activeColor,
+    setActiveColor,
+    movingShapeId,
+    setMovingShapeId,
+    mouseInitialPosRef,
+    shapeInitialPosRef
   } = useContext(AppContext);
 
-  const canvasRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [draggingAsset, setDraggingAsset] = useState(null);
-  const [previewMode, setPreviewMode] = useState(false);
   const [previewPositions, setPreviewPositions] = useState([]);
   const [vibratingLayer, setVibratingLayer] = useState(null);
   
   // Cache for images to prevent flickering
   const imageCache = useRef({});
+
+  // Track canvas mouse move for toolbar drag
+  useEffect(() => {
+    if (isDraggingToolbar) {
+      const handleMouseMove = (e) => {
+        const deltaX = e.clientX - toolbarDragStartRef.current.x;
+        const deltaY = e.clientY - toolbarDragStartRef.current.y;
+        
+        setToolbarPosition(prev => ({
+          x: prev.x + deltaX,
+          y: prev.y + deltaY
+        }));
+        
+        toolbarDragStartRef.current = { x: e.clientX, y: e.clientY };
+      };
+      
+      const handleMouseUp = () => {
+        setIsDraggingToolbar(false);
+      };
+      
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDraggingToolbar, toolbarDragStartRef, setToolbarPosition, setIsDraggingToolbar]);
+
+  // Track moving shapes
+  useEffect(() => {
+    if (movingShapeId) {
+      const handleMouseMove = (e) => {
+        const deltaX = e.clientX - mouseInitialPosRef.current.x;
+        const deltaY = e.clientY - mouseInitialPosRef.current.y;
+        
+        const newX = shapeInitialPosRef.current.x + deltaX;
+        const newY = shapeInitialPosRef.current.y + deltaY;
+        
+        setCanvasShapes(shapes => 
+          shapes.map(shape => 
+            shape.id === movingShapeId 
+              ? { ...shape, x: newX, y: newY }
+              : shape
+          )
+        );
+      };
+      
+      const handleMouseUp = () => {
+        setMovingShapeId(null);
+      };
+      
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [movingShapeId, mouseInitialPosRef, shapeInitialPosRef, setCanvasShapes, setMovingShapeId]);
 
   // Preload images to prevent flickering
   const preloadImages = () => {
@@ -142,6 +233,105 @@ const GameComponent = () => {
     return layer.properties.positionOrigin;
   };
 
+  // Handle canvas drop for shapes (color fill)
+  const handleCanvasDrop = async (e) => {
+    e.preventDefault();
+    if (!draggedShapeRef.current) return;
+    
+    // Get canvas bounds
+    const canvasBounds = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+    if (!canvasBounds) return;
+    
+    // Calculate drop position relative to canvas
+    const x = e.clientX - canvasBounds.left;
+    const y = e.clientY - canvasBounds.top;
+    
+    try {
+      // Get the shape data from drag event
+      const shapeSource = draggedShapeRef.current;
+      
+      // Fetch the SVG content from the URL if it's a URL, or use the SVG string directly
+      let svgContent = createFallbackSvg();
+      
+      try {
+        // Handle File or Blob objects (from local uploads)
+        if (isFileOrBlob(shapeSource)) {
+          console.log('Processing uploaded SVG file:', shapeSource.name || 'unnamed');
+          
+          // Read the file content
+          const reader = new FileReader();
+          svgContent = await new Promise((resolve, reject) => {
+            reader.onload = (e) => {
+              const content = e.target.result;
+              if (isValidSvg(content)) {
+                console.log('Successfully read SVG file content');
+                resolve(content);
+              } else {
+                console.warn('Invalid SVG file content, using fallback');
+                resolve(createFallbackSvg());
+              }
+            };
+            reader.onerror = () => {
+              console.error('Error reading SVG file');
+              reject(new Error('Failed to read SVG file'));
+            };
+            reader.readAsText(shapeSource);
+          });
+        }
+        // Handle string-based sources
+        else if (typeof shapeSource === 'string') {
+          if (shapeSource.startsWith('<svg')) {
+            // It's already an SVG string
+            svgContent = shapeSource;
+            console.log('Received SVG content directly');
+          } else {
+            // It's a URL, fetch the content
+            const response = await fetch(shapeSource);
+            if (response.ok) {
+              const text = await response.text();
+              
+              // Validate the SVG content
+              if (isValidSvg(text)) {
+                svgContent = text;
+                console.log('Fetched valid SVG content');
+              } else {
+                console.warn('Fetched invalid SVG content, using fallback');
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error processing SVG content:', error);
+      }
+      
+      // Enhance SVG visibility using our utility function
+      svgContent = enhanceSvgVisibility(svgContent);
+      
+      // Ensure SVG has namespace if not present
+      if (!svgContent.includes('xmlns')) {
+        svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+      
+      // Add shape to canvas if it's color fill action
+      if (selectedAction === "colorfill") {
+        const newShape = {
+          id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          shapeId: shapeSource,
+          svg: svgContent,
+          x,
+          y,
+          fills: {} // Will store element id to color mapping
+        };
+        
+        setCanvasShapes(prevShapes => [...prevShapes, newShape]);
+      }
+    } catch (error) {
+      console.error('Error adding shape to canvas:', error);
+    } finally {
+      draggedShapeRef.current = null;
+    }
+  };
+
   // Draw all layers on canvas
   const drawLayers = (ctx) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -153,7 +343,7 @@ const GameComponent = () => {
         const currentPosition = getPreviewPosition(layer, index);
         
         const layerType = layer.properties.type || 
-                         (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
+                         (layer.properties.imgUrl && layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
         
         if (layerType === "video") {
           // Video handling
@@ -341,6 +531,33 @@ const GameComponent = () => {
     vibratingLayer
   ]);
 
+  // Handle shape click (for color fill)
+  const handleShapeClick = (e, canvasShapeId) => {
+    if (!previewMode || !activeColor) return;
+    
+    // Find the target element that was clicked (the fillable part)
+    const targetElement = e.target;
+    if (!targetElement.getAttribute('fill')) return;
+    
+    // Update the fill color of the clicked shape part
+    setCanvasShapes(canvasShapes.map(shape => {
+      if (shape.id === canvasShapeId) {
+        // Create a new fills object with the updated color
+        const newFills = {
+          ...shape.fills,
+          [targetElement.id || targetElement.tagName]: activeColor
+        };
+        return { ...shape, fills: newFills };
+      }
+      return shape;
+    }));
+  };
+
+  // Delete a shape from canvas
+  const handleDeleteShape = (shapeId) => {
+    setCanvasShapes(canvasShapes.filter(shape => shape.id !== shapeId));
+  };
+
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -421,7 +638,7 @@ const GameComponent = () => {
         y <= assetPosition.y + assetSize.height
       ) {
         setIsDragging(true);
-        setDragStart({ x: x - assetPosition.x, y: y - assetPosition.y });
+        setDragStart({ x: x - shadowPosition.x, y: y - shadowPosition.y });
         setDraggingAsset("original");
       }
     }
@@ -526,6 +743,31 @@ const GameComponent = () => {
     setDraggingAsset(null);
   };
 
+  // Start moving a shape (for color fill shapes)
+  const handleStartMoveShape = (e, shapeId) => {
+    if (previewMode) return;
+    
+    e.stopPropagation();
+    
+    // Save current positions
+    const shape = canvasShapes.find(s => s.id === shapeId);
+    if (!shape) return;
+    
+    // Save initial positions
+    mouseInitialPosRef.current = { x: e.clientX, y: e.clientY };
+    shapeInitialPosRef.current = { x: shape.x, y: shape.y };
+    
+    // Set moving shape id
+    setMovingShapeId(shapeId);
+  };
+
+  // Handle toolbar color selection
+  const handleToolbarColorSelect = (color) => {
+    if (previewMode) {
+      setActiveColor(color);
+    }
+  };
+
   return (
     <div className="asset-manager" style={{ display: "flex" }}>
       <Sider />
@@ -542,6 +784,11 @@ const GameComponent = () => {
       {!previewMode && selectedTab === "3" && (
         <div style={{ width: 300, overflowY: "auto" }}>
           <Assets />
+        </div>
+      )}
+      {!previewMode && selectedTab === "5" && (
+        <div style={{ width: 300, overflowY: "auto" }}>
+          <ShapeLibrary />
         </div>
       )}
       <div style={{ 
@@ -623,7 +870,148 @@ const GameComponent = () => {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onDrop={handleCanvasDrop}
+            onDragOver={(e) => e.preventDefault()}
           />
+          
+          {/* Color fill shapes overlay */}
+          <div 
+            className="shapes-overlay"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '800px',
+              height: '600px',
+              pointerEvents: 'none'
+            }}
+          >
+            {canvasShapes.map((shape) => {
+              // Apply stored fills to the SVG and ensure visibility
+              let filledSvg;
+              try {
+                filledSvg = applyFillsToSvgString(shape.svg, shape.fills);
+                // Double-check visibility
+                filledSvg = enhanceSvgVisibility(filledSvg);
+              } catch (error) {
+                console.error('Error processing SVG for render:', error);
+                filledSvg = createFallbackSvg();
+              }
+              
+              return (
+                <div
+                  key={shape.id}
+                  style={{
+                    position: 'absolute',
+                    left: `${shape.x}px`,
+                    top: `${shape.y}px`,
+                    pointerEvents: previewMode ? 'auto' : 'all', // Enable pointer events in preview mode
+                    cursor: previewMode ? 'pointer' : 'move'
+                  }}
+                  onClick={(e) => previewMode && handleShapeClick(e, shape.id)}
+                  onMouseDown={(e) => !previewMode && handleStartMoveShape(e, shape.id)}
+                >
+                  <div className="svg-container">
+                    {/* Directly include the SVG content */}
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: filledSvg }}
+                      style={{ 
+                        filter: 'drop-shadow(0px 2px 3px rgba(0,0,0,0.1))',
+                        transition: 'transform 0.2s',
+                        transform: !previewMode ? 'scale(1.0)' : 'scale(1.0)',
+                        border: '1px solid rgba(0,0,0,0.1)', 
+                        background: 'rgba(255,255,255,0.8)', 
+                        borderRadius: '4px',
+                        width: '100px',
+                        height: '100px' 
+                      }}
+                    />
+                    {!previewMode && (
+                      <button 
+                        className="delete-shape-btn"
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: '-8px',
+                          backgroundColor: '#ff4d4f',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          zIndex: 10
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteShape(shape.id);
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Floating Color Toolbar (in preview mode) */}
+          {previewMode && selectedColors.length > 0 && selectedAction === "colorfill" && (
+            <div 
+              className="floating-toolbar"
+              style={{ 
+                position: 'absolute',
+                left: `${toolbarPosition.x}px`, 
+                top: `${toolbarPosition.y}px`,
+                zIndex: 1000,
+                padding: '8px 12px',
+                background: 'white',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                border: '1px solid #ddd',
+                cursor: 'move'
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Store initial positions
+                toolbarDragStartRef.current = { x: e.clientX, y: e.clientY };
+                setIsDraggingToolbar(true);
+              }}
+            >
+              <div className="toolbar-colors" style={{ display: 'flex', gap: '8px' }}>
+                {selectedColors.map((color) => (
+                  <div 
+                    key={color}
+                    className={`toolbar-color ${activeColor === color ? 'active' : ''}`}
+                    style={{ 
+                      width: '30px', 
+                      height: '30px', 
+                      borderRadius: '50%', 
+                      backgroundColor: color,
+                      border: activeColor === color ? '2px solid #000' : '1px solid #e0e0e0',
+                      cursor: 'pointer',
+                      boxShadow: activeColor === color ? '0 0 5px rgba(0,0,0,0.3)' : 'none',
+                      transform: activeColor === color ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                    onClick={() => handleToolbarColorSelect(color)}
+                  />
+                ))}
+              </div>
+              {!activeColor && (
+                <div className="toolbar-hint" style={{ fontSize: '12px', color: '#999', marginTop: '5px', textAlign: 'center' }}>
+                  Select a color
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       {!previewMode && <RightSidebar />}
@@ -632,3 +1020,4 @@ const GameComponent = () => {
 };
 
 export default GameComponent;
+

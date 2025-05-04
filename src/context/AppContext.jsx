@@ -1,9 +1,11 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
+// src/context/AppContext.jsx
+import React, { createContext, useState, useEffect, useCallback, useRef } from "react";
 import { getAllPages, getAllLayers } from "../services/api";
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+  // Original states from existing AppContext
   const [selectedActivity, setSelectedActivity] = useState("");
   const [selectedPage, setSelectedPage] = useState(null);
   const [pageName, setPageName] = useState("");
@@ -28,6 +30,28 @@ export const AppProvider = ({ children }) => {
   });
   const [slides, setSlides] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(-1);
+
+  // States for color fill game
+  const [canvasShapes, setCanvasShapes] = useState([]);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [selectedColors, setSelectedColors] = useState([]);
+  const [activeColor, setActiveColor] = useState(null);
+  const [customColor, setCustomColor] = useState('#FF5252');
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState({ x: 20, y: 20 });
+  const [isDraggingToolbar, setIsDraggingToolbar] = useState(false);
+  const [fillColor, setFillColor] = useState("#861E00");
+  const [strokeColor, setStrokeColor] = useState("#FFFFFF");
+  
+  // Refs
+  const canvasRef = useRef(null);
+  const draggedShapeRef = useRef(null);
+  const toolbarDragStartRef = useRef({ x: 0, y: 0 });
+  const mouseInitialPosRef = useRef({ x: 0, y: 0 });
+  const shapeInitialPosRef = useRef({ x: 0, y: 0 });
+  
+  // Shape moving state
+  const [movingShapeId, setMovingShapeId] = useState(null);
 
   const loadPages = useCallback(async () => {
     if (!selectedActivity) return;
@@ -65,7 +89,7 @@ export const AppProvider = ({ children }) => {
         saved: true,
         properties: {
           ...layer.properties,
-          type: layer.properties.type || (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
+          type: layer.properties.type || (layer.properties.imgUrl && layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
         },
       }));
       console.log("Processed layers:", apiLayers);
@@ -107,6 +131,7 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
+        // Original context values
         selectedTab,
         setSelectedTab,
         selectedPage,
@@ -138,6 +163,39 @@ export const AppProvider = ({ children }) => {
         currentPageIndex,
         setCurrentPageIndex,
         switchPage,
+        
+        // Color fill game context values
+        canvasShapes,
+        setCanvasShapes,
+        previewMode,
+        setPreviewMode,
+        selectedColors,
+        setSelectedColors,
+        activeColor,
+        setActiveColor,
+        customColor,
+        setCustomColor,
+        showColorPicker,
+        setShowColorPicker,
+        toolbarPosition,
+        setToolbarPosition,
+        isDraggingToolbar,
+        setIsDraggingToolbar,
+        fillColor,
+        setFillColor,
+        strokeColor,
+        setStrokeColor,
+        
+        // Refs
+        canvasRef,
+        draggedShapeRef,
+        toolbarDragStartRef,
+        mouseInitialPosRef,
+        shapeInitialPosRef,
+        
+        // Moving shape
+        movingShapeId,
+        setMovingShapeId
       }}
     >
       {children}

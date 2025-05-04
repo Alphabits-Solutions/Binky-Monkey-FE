@@ -1,3 +1,4 @@
+// src/components/RightSidebar.jsx
 import Resize from "../assets/icons/Home/RightSidebar/resize.svg";
 import Drag from "../assets/icons/Home/RightSidebar/drag.svg";
 import Rotation from "../assets/icons/Home/RightSidebar/rotation.svg";
@@ -6,6 +7,32 @@ import Vibrations from "../assets/icons/Home/RightSidebar/vibration.svg";
 import AudioAction from "../assets/icons/Home/RightSidebar/audioaction.svg";
 import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
+
+// Predefined colors
+const PRESET_COLORS = [
+  { name: 'Red', value: '#FF5252' },
+  { name: 'Blue', value: '#4285F4' },
+  { name: 'Green', value: '#0F9D58' },
+  { name: 'Yellow', value: '#FFEB3B' },
+  { name: 'Purple', value: '#9C27B0' },
+  { name: 'Orange', value: '#FF9800' },
+  { name: 'Pink', value: '#E91E63' },
+  { name: 'Cyan', value: '#00BCD4' },
+];
+
+// Color wheel component to select custom colors
+const ColorWheelVisual = ({ value, onChange }) => {
+  return (
+    <div className="color-wheel">
+      <input
+        type="color"
+        value={value}
+        onChange={onChange}
+        className="color-input"
+      />
+    </div>
+  );
+};
 
 const RightSidebar = () => {
   const {
@@ -20,14 +47,23 @@ const RightSidebar = () => {
     setAssetSize,
     layerProperties,
     setLayerProperties,
+    // Color fill properties
+    selectedColors,
+    setSelectedColors,
+    customColor,
+    setCustomColor,
+    showColorPicker,
+    setShowColorPicker,
+    fillColor,
+    setFillColor,
+    strokeColor,
+    setStrokeColor,
   } = useContext(AppContext);
 
-  const [fillColor, setFillColor] = useState("#861E00");
-  const [strokeColor, setStrokeColor] = useState("#FFFFFF");
   const [rotationAngle, setRotationAngle] = useState(0);
   const [vibrationIntensity, setVibrationIntensity] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
-
+  
   const hexToRgb = (hex) => {
     hex = hex.replace(/^#/, "");
     let r = parseInt(hex.substring(0, 2), 16);
@@ -36,7 +72,14 @@ const RightSidebar = () => {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  useEffect(() => {
+  // Update effect in RightSidebar.jsx
+useEffect(() => {
+  if (selectedAction === "colorfill") {
+    setLayerProperties((prev) => ({
+      ...prev,
+      color: selectedColors, // Store the selected colors as the palette
+    }));
+  } else {
     setLayerProperties((prev) => ({
       ...prev,
       imgUrl: selectedAsset?.src || "",
@@ -48,18 +91,21 @@ const RightSidebar = () => {
       audioUrl: audioUrl,
       rotationAngle: rotationAngle,
     }));
-  }, [
-    selectedAsset,
-    fillColor,
-    strokeColor,
-    assetSize,
-    assetPosition,
-    shadowPosition,
-    vibrationIntensity,
-    audioUrl,
-    rotationAngle,
-    setLayerProperties,
-  ]);
+  }
+}, [
+  selectedAction,
+  selectedAsset,
+  fillColor,
+  strokeColor,
+  assetSize,
+  assetPosition,
+  shadowPosition,
+  vibrationIntensity,
+  audioUrl,
+  rotationAngle,
+  selectedColors,
+  setLayerProperties,
+]);
 
   const handlePositionChange = (e, axis, target) => {
     const value = parseInt(e.target.value) || 0;
@@ -99,6 +145,29 @@ const RightSidebar = () => {
     }));
   };
 
+  // Handle custom color change
+  const handleCustomColorChange = (e) => {
+    setCustomColor(e.target.value);
+  };
+
+  // Handle toggling color selection
+  const handleColorSelect = (color) => {
+    if (selectedColors.includes(color)) {
+      setSelectedColors(selectedColors.filter(c => c !== color));
+    } else if (selectedColors.length < 5) {
+      setSelectedColors([...selectedColors, color]);
+    }
+  };
+
+  // Handle adding custom color to palette
+  const handleAddCustomColor = () => {
+    if (selectedColors.length < 5) {
+      setSelectedColors([...selectedColors, customColor]);
+      setShowColorPicker(false);
+    }
+  };
+
+  // Action-specific controls
   const actionFields = {
     drag: (
       <div className="layout-controls">
@@ -185,23 +254,119 @@ const RightSidebar = () => {
     ),
     colorfill: (
       <div className="layout-controls">
-        <div>
-          <label>Fill Color</label>
-          <input
-            type="color"
-            value={fillColor}
-            onChange={(e) => setFillColor(e.target.value)}
-          />
-          <span>{fillColor}</span>
-        </div>
-        <div>
-          <label>Stroke Color</label>
-          <input
-            type="color"
-            value={strokeColor}
-            onChange={(e) => setStrokeColor(e.target.value)}
-          />
-          <span>{strokeColor}</span>
+        {/* Color Palette Section */}
+        <div className="color-palette-section">
+          <p className="color-palette-hint">Choose up to 5 colors for your palette:</p>
+          
+          {/* Selected Colors Display */}
+          <div className="selected-colors">
+            <h4>Your Palette</h4>
+            <div className="color-chips">
+              {selectedColors.length > 0 ? (
+                selectedColors.map((color, index) => (
+                  <div 
+                    key={`${color}-${index}`}
+                    className="color-chip"
+                  >
+                    <div 
+                      className="color-preview" 
+                      style={{ backgroundColor: color }}
+                    />
+                    <button 
+                      className="color-delete-btn"
+                      onClick={() => setSelectedColors(selectedColors.filter((_, i) => i !== index))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="no-colors-message">No colors selected yet</p>
+              )}
+              {selectedColors.length < 5 && (
+                <button
+                  className="add-color-btn"
+                  onClick={() => setShowColorPicker(true)}
+                >
+                  +
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Color Wheel Picker */}
+          {showColorPicker && (
+            <div className="color-picker-container">
+              <button 
+                className="close-picker-btn"
+                onClick={() => setShowColorPicker(false)}
+              >
+                ×
+              </button>
+              <h4>Color Picker</h4>
+              
+              {/* Color Wheel */}
+              <div className="color-wheel-container">
+                <ColorWheelVisual 
+                  value={customColor}
+                  onChange={handleCustomColorChange}
+                />
+                
+                <div className="color-preview-container">
+                  <div 
+                    className="selected-color-preview" 
+                    style={{ backgroundColor: customColor }}
+                  />
+                  <input 
+                    type="text"
+                    value={customColor}
+                    onChange={handleCustomColorChange}
+                    className="color-value-input"
+                  />
+                </div>
+                
+                {/* Color presets for quick selection */}
+                <div className="color-presets">
+                  {['#FF5252', '#4285F4', '#0F9D58', '#FFEB3B', '#9C27B0', '#FF9800', 
+                    '#E91E63', '#00BCD4', '#3F51B5', '#8BC34A', '#FFC107', '#607D8B'].map(color => (
+                    <div 
+                      key={color}
+                      className="preset-color"
+                      style={{ backgroundColor: color }}
+                      onClick={() => setCustomColor(color)}
+                    />
+                  ))}
+                </div>
+                
+                <button 
+                  className="add-palette-btn"
+                  onClick={handleAddCustomColor}
+                  disabled={selectedColors.length >= 5}
+                >
+                  Add to Palette
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Quick Pick Colors */}
+          <div className="quick-picks">
+            <h4>Quick Picks</h4>
+            <div className="preset-colors-grid">
+              {PRESET_COLORS.map((color) => (
+                <div
+                  key={color.value}
+                  className={`preset-color-item ${
+                    selectedColors.includes(color.value) ? 'selected' : ''
+                  }`}
+                  onClick={() => handleColorSelect(color.value)}
+                >
+                  <div className="preset-color-preview" style={{ backgroundColor: color.value }} />
+                  <span className="preset-color-name">{color.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     ),
