@@ -130,7 +130,11 @@ const ShapeLibrary = () => {
 
   return (
     <div className="file-list-section">
+       
       <div className="file-list">
+      <div className="header">
+        <h2>Objects</h2>
+      </div>
         <div className="add-media" onClick={handleAddShapeClick}>
           {uploading ? "Uploading..." : "+ Add Shape"}
         </div>

@@ -58,9 +58,29 @@ const Layers = () => {
     }
   }, [selectedPage, selectedAsset, selectedAction, layerProperties, setLayers, layers]);
 
-  const handleSaveLayer = async (layer) => {
-    try {
-      const payload = {
+// In Layers.jsx
+const handleSaveLayer = async (layer) => {
+  try {
+    let payload;
+    
+    if (layer.action === "colorfill") {
+      payload = {
+        name: layer.name,
+        action: layer.action,
+        properties: {
+          color: layer.properties.color, // The color palette
+          size: layer.properties.size,
+          positionOrigin: layer.properties.positionOrigin,
+          positionDestination: layer.properties.positionOrigin,
+          svgContent: layer.properties.svgContent, // SVG content
+          type: "svg"
+        },
+        pageId: layer.pageId,
+        shapeId: layer.shapeId // Save shapeId at root level
+      };
+    } else {
+      // Original payload for other action types
+      payload = {
         name: layer.name,
         action: layer.action,
         properties: {
@@ -75,21 +95,20 @@ const Layers = () => {
         },
         pageId: layer.pageId,
       };
-
-      const savedLayer = await createLayer(payload);
-      setLayers((prev) =>
-        prev.map((l) =>
-          l.properties.imgUrl === layer.properties.imgUrl && l.action === layer.action
-            ? { ...savedLayer, saved: true }
-            : l
-        )
-      );
-      message.success("Layer saved successfully!");
-    } catch (error) {
-      console.error("Error saving layer:", error);
-      message.error(error.message || "Failed to save layer. Please try again.");
     }
-  };
+
+    const savedLayer = await createLayer(payload);
+    setLayers((prev) =>
+      prev.map((l) =>
+        l === layer ? { ...savedLayer, saved: true, shapeId: layer.shapeId } : l
+      )
+    );
+    message.success("Layer saved successfully!");
+  } catch (error) {
+    console.error("Error saving layer:", error);
+    message.error(error.message || "Failed to save layer. Please try again.");
+  }
+};
 
   const handleSelectLayer = useCallback(
     (layer) => {

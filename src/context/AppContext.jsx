@@ -74,31 +74,70 @@ export const AppProvider = ({ children }) => {
     }
   }, [selectedActivity, selectedSlideId]);
 
-  const loadLayers = useCallback(async (pageId) => {
-    if (!pageId) {
-      console.log("No pageId, clearing layers");
-      setLayers([]);
-      return;
-    }
-    try {
-      console.log("Fetching layers for pageId:", pageId);
-      const result = await getAllLayers(pageId);
-      console.log("API response:", result);
-      const apiLayers = (Array.isArray(result) ? result : []).map((layer) => ({
+// In AppContext.jsx, update the loadLayers function:
+const loadLayers = useCallback(async (pageId) => {
+  if (!pageId) {
+    console.log("No pageId, clearing layers");
+    setLayers([]);
+    setCanvasShapes([]); // Also clear canvas shapes
+    return;
+  }
+  try {
+    console.log("Fetching layers for pageId:", pageId);
+    const result = await getAllLayers(pageId);
+    console.log("API response:", result);
+    
+    // Initialize new canvas shapes array for this page
+    let newCanvasShapes = [];
+    
+    const apiLayers = (Array.isArray(result) ? result : []).map((layer) => {
+      // Handle colorfill layers
+      if (layer.action === "colorfill" && layer.properties.svgContent) {
+        // Generate shape ID if not exists
+        const shapeId = layer.shapeId || `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Create a new canvas shape for this layer
+        newCanvasShapes.push({
+          id: shapeId,
+          svg: layer.properties.svgContent,
+          x: layer.properties.positionOrigin.x,
+          y: layer.properties.positionOrigin.y,
+          fills: {} // Empty fills when loading - will only be filled in preview mode
+        });
+        
+        // Return the processed layer
+        return {
+          ...layer,
+          saved: true,
+          shapeId: shapeId,
+          properties: {
+            ...layer.properties,
+            type: "svg"
+          }
+        };
+      }
+      
+      // Handle other layer types
+      return {
         ...layer,
         saved: true,
         properties: {
           ...layer.properties,
           type: layer.properties.type || (layer.properties.imgUrl && layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
         },
-      }));
-      console.log("Processed layers:", apiLayers);
-      setLayers(apiLayers);
-    } catch (error) {
-      console.error("Failed to load layers:", error);
-      setLayers([]);
-    }
-  }, [setLayers]);
+      };
+    });
+    
+    // Set the new canvas shapes
+    setCanvasShapes(newCanvasShapes);
+    
+    console.log("Processed layers:", apiLayers);
+    setLayers(apiLayers);
+  } catch (error) {
+    console.error("Failed to load layers:", error);
+    setLayers([]);
+  }
+}, [setLayers, setCanvasShapes]);
 
   const switchPage = useCallback((direction) => {
     let newIndex;

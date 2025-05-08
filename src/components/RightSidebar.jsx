@@ -73,11 +73,12 @@ const RightSidebar = () => {
   };
 
   // Update effect in RightSidebar.jsx
+
 useEffect(() => {
   if (selectedAction === "colorfill") {
     setLayerProperties((prev) => ({
       ...prev,
-      color: selectedColors, // Store the selected colors as the palette
+      color: selectedColors, // Store the color palette only, not the fills
     }));
   } else {
     setLayerProperties((prev) => ({
