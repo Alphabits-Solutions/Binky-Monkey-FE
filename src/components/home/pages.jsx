@@ -1,7 +1,7 @@
 import { useState, useCallback, useContext } from "react";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { AppContext } from "../../context/AppContext";
-import { createPage, updatePage, deletePage } from "../../services/api";
+import { createPage, updatePage, deletePage, getAllPages } from "../../services/api";
 import { message, Modal, Input, Button } from "antd";
 
 const Pages = () => {
@@ -15,17 +15,27 @@ const Pages = () => {
     setLayers, 
     slides, 
     setSlides,
-    currentPageIndex,
     setCurrentPageIndex
   } = useContext(AppContext);
   
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
 
+  const handelGetAllSlides = async () => {
+    try {
+      const response = await getAllPages(selectedActivity);
+      setSlides(response);
+    } catch (error) {
+      console.error("Error fetching slides:", error);
+      message.error("Failed to fetch slides. Please try again.");
+    }
+  }
+
   const handleAddSlide = async () => {
     try {
       await createPage({ title: "Untitled Page", activityId: selectedActivity });
       message.success("Page created successfully!");
+      handelGetAllSlides();
     } catch (error) {
       console.error("Error creating page:", error);
       message.error("Failed to create page. Please try again.");
@@ -48,7 +58,7 @@ const Pages = () => {
       const updated = await updatePage(editingPage._id, { title: pageName.trim() });
       setSlides((prev) =>
         prev.map((slide) =>
-          slide._id === updated._id ? { ...slide, title: updated.title } : slide
+          slide._id === updated.data._id ? { ...slide, title: updated.data.title } : slide
         )
       );
       message.success("Page updated successfully!");
