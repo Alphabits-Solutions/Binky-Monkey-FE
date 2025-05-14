@@ -6,7 +6,7 @@ import Layers from "../components/home/layerList";
 import Assets from "../components/home/assetFileList";
 import { AppContext } from "../context/AppContext";
 import { Button, message } from "antd";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { LeftOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import { createLayer } from "../services/api";
 import "../assets/sass/homescreen.scss";
 
@@ -26,6 +26,7 @@ const GameComponent = () => {
     layers,
     setLayers,
     selectedLayer,
+    setSelectedLayer,
     layerProperties,
     setLayerProperties,
     slides,
@@ -34,6 +35,7 @@ const GameComponent = () => {
   } = useContext(AppContext);
 
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [draggingAsset, setDraggingAsset] = useState(null);
@@ -41,8 +43,16 @@ const GameComponent = () => {
   const [previewPositions, setPreviewPositions] = useState([]);
   const [vibratingLayer, setVibratingLayer] = useState(null);
   const [resizingHandle, setResizingHandle] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   const imageCache = useRef({});
+
+  const MIN_ZOOM = 0.1; // 10%
+  const MAX_ZOOM = 5.0; // 500%
+  const ZOOM_STEP = 0.1;
 
   const preloadImages = () => {
     layers.forEach((layer) => {
@@ -98,8 +108,8 @@ const GameComponent = () => {
         return;
       }
 
-      const offsetX = Math.random() * 10 - 5;
-      const offsetY = Math.random() * 10 - 5;
+      const offsetX = (Math.random() * 10 - 5) / zoomLevel;
+      const offsetY = (Math.random() * 10 - 5) / zoomLevel;
 
       setPreviewPositions((prev) => {
         const newPositions = [...prev];
@@ -123,7 +133,7 @@ const GameComponent = () => {
   };
 
   const isNearDestination = (position, destination) => {
-    const tolerance = 30;
+    const tolerance = 30 / zoomLevel;
     return (
       Math.abs(position.x - destination.x) <= tolerance &&
       Math.abs(position.y - destination.y) <= tolerance
@@ -138,7 +148,7 @@ const GameComponent = () => {
   };
 
   const getResizeHandles = (x, y, width, height) => {
-    const handleSize = 8;
+    const handleSize = 8 / zoomLevel;
     return [
       { id: "top-left", x: x - handleSize / 2, y: y - handleSize / 2, cursor: "nw-resize" },
       { id: "top-center", x: x + width / 2 - handleSize / 2, y: y - handleSize / 2, cursor: "n-resize" },
@@ -202,8 +212,31 @@ const GameComponent = () => {
     }
   };
 
+  const handleZoomIn = () => {
+    setZoomLevel((prev) => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel((prev) => Math.max(prev - ZOOM_STEP, MIN_ZOOM));
+  };
+
+  const transformMouseCoordinates = (clientX, clientY) => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scrollLeft = container.scrollLeft;
+    const scrollTop = container.scrollTop;
+    const canvasX = (clientX - rect.left + scrollLeft - panOffset.x) / zoomLevel;
+    const canvasY = (clientY - rect.top + scrollTop - panOffset.y) / zoomLevel;
+    return { x: canvasX, y: canvasY };
+  };
+
   const drawLayers = (ctx) => {
+    ctx.save();
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    ctx.translate(panOffset.x, panOffset.y);
+    ctx.scale(zoomLevel, zoomLevel);
 
     layers.forEach((layer, index) => {
       if (layer.properties.imgUrl) {
@@ -327,7 +360,7 @@ const GameComponent = () => {
         handles.forEach((handle) => {
           ctx.fillStyle = "#1890ff";
           ctx.beginPath();
-          ctx.arc(handle.x + 4, handle.y + 4, 4, 0, 2 * Math.PI);
+          ctx.arc(handle.x + 4 / zoomLevel, handle.y + 4 / zoomLevel, 4 / zoomLevel, 0, 2 * Math.PI);
           ctx.fill();
         });
       }
@@ -363,6 +396,8 @@ const GameComponent = () => {
         };
       }
     }
+
+    ctx.restore();
   };
 
   useEffect(() => {
@@ -400,13 +435,18 @@ const GameComponent = () => {
     previewMode,
     previewPositions,
     vibratingLayer,
+    zoomLevel,
+    panOffset,
   ]);
 
   const handleMouseDown = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = transformMouseCoordinates(e.clientX, e.clientY);
+
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
 
     if (previewMode) {
       let foundLayer = false;
@@ -444,13 +484,13 @@ const GameComponent = () => {
         assetSize.height
       );
       const clickedHandle = handles.find((handle) => {
-        const handleX = handle.x + 4;
-        const handleY = handle.y + 4;
+        const handleX = handle.x + 4 / zoomLevel;
+        const handleY = handle.y + 4 / zoomLevel;
         return (
-          x >= handleX - 4 &&
-          x <= handleX + 4 &&
-          y >= handleY - 4 &&
-          y <= handleY + 4
+          x >= handleX - 4 / zoomLevel &&
+          x <= handleX + 4 / zoomLevel &&
+          y >= handleY - 4 / zoomLevel &&
+          y <= handleY + 4 / zoomLevel
         );
       });
 
@@ -465,7 +505,7 @@ const GameComponent = () => {
           x >= layer.properties.positionOrigin.x &&
           x <= layer.properties.positionOrigin.x + parseInt(layer.properties.size[0]) &&
           y >= layer.properties.positionOrigin.y &&
-          y <= layer.properties.positionOrigin.y + parseInt(layer.properties.size[1])
+          y <= layer.properties.size[1]
       );
 
       if (clickedLayer !== -1) {
@@ -510,12 +550,20 @@ const GameComponent = () => {
   };
 
   const handleMouseMove = (e) => {
+    if (isPanning) {
+      const deltaX = e.clientX - panStart.x;
+      const deltaY = e.clientY - panStart.y;
+      setPanOffset((prev) => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY,
+      }));
+      setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
     if (!isDragging) return;
 
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = transformMouseCoordinates(e.clientX, e.clientY);
 
     if (previewMode && typeof draggingAsset === "number") {
       const layer = layers[draggingAsset];
@@ -525,9 +573,6 @@ const GameComponent = () => {
         x: x - dragStart.x,
         y: y - dragStart.y,
       };
-
-      newPosition.x = Math.max(0, Math.min(canvas.width - parseInt(layer.properties.size[0]), newPosition.x));
-      newPosition.y = Math.max(0, Math.min(canvas.height - parseInt(layer.properties.size[1]), newPosition.y));
 
       setPreviewPositions((prev) => {
         const newPositions = [...prev];
@@ -553,7 +598,7 @@ const GameComponent = () => {
           newWidth = assetSize.width - deltaX;
           newHeight = assetSize.height - deltaY;
           newX = assetPosition.x + deltaX;
-newY = assetPosition.y + deltaY;
+          newY = assetPosition.y + deltaY;
           break;
         case "top-center":
           newHeight = assetSize.height - deltaY;
@@ -587,10 +632,8 @@ newY = assetPosition.y + deltaY;
           break;
       }
 
-      newWidth = Math.max(20, Math.min(canvas.width - newX, newWidth));
-      newHeight = Math.max(20, Math.min(canvas.height - newY, newHeight));
-      newX = Math.max(0, Math.min(canvas.width - newWidth, newX));
-      newY = Math.max(0, Math.min(canvas.height - newHeight, newY));
+      newWidth = Math.max(20 / zoomLevel, newWidth);
+      newHeight = Math.max(20 / zoomLevel, newHeight);
 
       setAssetSize({ width: newWidth, height: newHeight });
       setAssetPosition({ x: newX, y: newY });
@@ -659,6 +702,7 @@ newY = assetPosition.y + deltaY;
     setIsDragging(false);
     setDraggingAsset(null);
     setResizingHandle(null);
+    setIsPanning(false);
   };
 
   return (
@@ -711,9 +755,24 @@ newY = assetPosition.y + deltaY;
                 Save
               </Button>
             )}
+            {!previewMode && (
+              <div className="zoom-controls">
+                <Button
+                  icon={<ZoomInOutlined />}
+                  onClick={handleZoomIn}
+                  aria-label="Zoom In"
+                />
+                <Button
+                  icon={<ZoomOutOutlined />}
+                  onClick={handleZoomOut}
+                  aria-label="Zoom Out"
+                />
+                <span>{Math.round(zoomLevel * 100)}%</span>
+              </div>
+            )}
           </div>
         </div>
-        <div style={{ position: "relative", width: "800px" }}>
+        <div style={{ position: "relative", width: "800px", height: "600px" }}>
           {previewMode && slides.length > 1 && (
             <>
               <Button
@@ -750,30 +809,32 @@ newY = assetPosition.y + deltaY;
               />
             </>
           )}
-          <canvas
-            ref={canvasRef}
-            id="asset-canvas"
-            width={800}
-            height={600}
+          <div
+            ref={containerRef}
+            className="canvas-container"
             style={{
+              width: "800px",
+              height: "600px",
+              overflow: "auto",
+              position: "relative",
               border: "1px solid #ccc",
-              background: "#fff",
-              cursor:
-                isDragging && resizingHandle
-                  ? getResizeHandles(assetPosition.x, assetPosition.y, assetSize.width, assetSize.height).find(
-                      (h) => h.id === resizingHandle
-                    )?.cursor || "default"
-                  : isDragging
-                  ? "grabbing"
-                  : previewMode
-                  ? "grab"
-                  : "default",
             }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          />
+          >
+            <canvas
+              ref={canvasRef}
+              id="asset-canvas"
+              width={4000} // Large canvas size for infinite workspace
+              height={4000}
+              style={{
+                display: "block", // Prevent scrollbars from canvas itself
+                background: "#fff",
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+          </div>
         </div>
       </div>
       {!previewMode && <RightSidebar />}
