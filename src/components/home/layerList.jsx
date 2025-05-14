@@ -23,7 +23,6 @@ const Layers = () => {
     setAssetSize,
   } = useContext(AppContext);
 
-  // Create a new layer when asset, action, and properties are set
   useEffect(() => {
     if (
       selectedPage &&
@@ -49,6 +48,7 @@ const Layers = () => {
           imgUrl: layerProperties.imgUrl || "",
           audioUrl: layerProperties.audioUrl || "",
           type: selectedAsset.type || "image",
+          rotationAngle: layerProperties.rotationAngle || 0,
         },
         pageId: selectedPage,
         saved: false,
@@ -56,7 +56,7 @@ const Layers = () => {
       console.log("Adding new unsaved layer:", newLayer);
       setLayers((prev) => [...prev, newLayer]);
     }
-  }, [selectedPage, selectedAsset, selectedAction, layerProperties, setLayers, layers]);
+  }, [selectedPage, selectedAsset, selectedAction, layerProperties.imgUrl, setLayers, layers]);
 
   const handleSaveLayer = async (layer) => {
     try {
@@ -72,6 +72,7 @@ const Layers = () => {
           imgUrl: layer.properties.imgUrl,
           audioUrl: layer.properties.audioUrl,
           type: layer.properties.type,
+          rotationAngle: layer.properties.rotationAngle || 0,
         },
         pageId: layer.pageId,
       };

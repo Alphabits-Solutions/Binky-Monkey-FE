@@ -270,22 +270,40 @@ const RightSidebar = () => {
       <div className="action">
         <h3>ACTIONS</h3>
         <div className="action-list">
-          <button onClick={() => setSelectedAction("resize")}>
+          <button
+            onClick={() => setSelectedAction("resize")}
+            className={selectedAction === "resize" ? "active" : ""}
+          >
             <img src={Resize} alt="Resize Icon" />
           </button>
-          <button onClick={() => setSelectedAction("drag")}>
+          <button
+            onClick={() => setSelectedAction("drag")}
+            className={selectedAction === "drag" ? "active" : ""}
+          >
             <img src={Drag} alt="Drag Icon" />
           </button>
-          <button onClick={() => setSelectedAction("rotation")}>
+          <button
+            onClick={() => setSelectedAction("rotation")}
+            className={selectedAction === "rotation" ? "active" : ""}
+          >
             <img src={Rotation} alt="Rotation Icon" />
           </button>
-          <button onClick={() => setSelectedAction("colorfill")}>
+          <button
+            onClick={() => setSelectedAction("colorfill")}
+            className={selectedAction === "colorfill" ? "active" : ""}
+          >
             <img src={ColorFill} alt="Color Fill Icon" />
           </button>
-          <button onClick={() => setSelectedAction("vibration")}>
+          <button
+            onClick={() => setSelectedAction("vibration")}
+            className={selectedAction === "vibration" ? "active" : ""}
+          >
             <img src={Vibrations} alt="Vibration Icon" />
           </button>
-          <button onClick={() => setSelectedAction("audio")}>
+          <button
+            onClick={() => setSelectedAction("audio")}
+            className={selectedAction === "audio" ? "active" : ""}
+          >
             <img src={AudioAction} alt="Audio Action Icon" />
           </button>
         </div>
