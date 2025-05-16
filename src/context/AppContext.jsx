@@ -43,15 +43,23 @@ export const AppProvider = ({ children }) => {
   const [fillColor, setFillColor] = useState("#861E00");
   const [strokeColor, setStrokeColor] = useState("#FFFFFF");
   
+  // 3D object properties
+  const [modelRotation, setModelRotation] = useState({ x: 0, y: 0, z: 0 });
+  const [modelScale, setModelScale] = useState(1.0);
+  const [modelViewers, setModelViewers] = useState({});
+  const [canvas3DObjects, setCanvas3DObjects] = useState([]);
+  
   // Refs
   const canvasRef = useRef(null);
   const draggedShapeRef = useRef(null);
+  const draggedModelRef = useRef(null);
   const toolbarDragStartRef = useRef({ x: 0, y: 0 });
   const mouseInitialPosRef = useRef({ x: 0, y: 0 });
   const shapeInitialPosRef = useRef({ x: 0, y: 0 });
   
   // Shape moving state
   const [movingShapeId, setMovingShapeId] = useState(null);
+  const [moving3DObjectId, setMoving3DObjectId] = useState(null);
 
   const loadPages = useCallback(async () => {
     if (!selectedActivity) return;
@@ -74,70 +82,100 @@ export const AppProvider = ({ children }) => {
     }
   }, [selectedActivity, selectedSlideId]);
 
-// In AppContext.jsx, update the loadLayers function:
-const loadLayers = useCallback(async (pageId) => {
-  if (!pageId) {
-    console.log("No pageId, clearing layers");
-    setLayers([]);
-    setCanvasShapes([]); // Also clear canvas shapes
-    return;
-  }
-  try {
-    console.log("Fetching layers for pageId:", pageId);
-    const result = await getAllLayers(pageId);
-    console.log("API response:", result);
-    
-    // Initialize new canvas shapes array for this page
-    let newCanvasShapes = [];
-    
-    const apiLayers = (Array.isArray(result) ? result : []).map((layer) => {
-      // Handle colorfill layers
-      if (layer.action === "colorfill" && layer.properties.svgContent) {
-        // Generate shape ID if not exists
-        const shapeId = layer.shapeId || `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const loadLayers = useCallback(async (pageId) => {
+    if (!pageId) {
+      console.log("No pageId, clearing layers");
+      setLayers([]);
+      setCanvasShapes([]); // Also clear canvas shapes
+      setCanvas3DObjects([]); // Clear 3D objects
+      return;
+    }
+    try {
+      console.log("Fetching layers for pageId:", pageId);
+      const result = await getAllLayers(pageId);
+      console.log("API response:", result);
+      
+      // Initialize new canvas shapes array for this page
+      let newCanvasShapes = [];
+      let new3DObjects = [];
+      
+      const apiLayers = (Array.isArray(result) ? result : []).map((layer) => {
+        // Handle 3D model layers
+        if (layer.action === "model3d" && layer.properties.modelUrl) {
+          // Generate object ID if not exists
+          const objectId = layer.objectId || `3d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Create a new 3D object for this layer
+          new3DObjects.push({
+            id: objectId,
+            modelUrl: layer.properties.modelUrl,
+            x: layer.properties.positionOrigin.x,
+            y: layer.properties.positionOrigin.y,
+            rotation: layer.properties.rotation || { x: 0, y: 0, z: 0 },
+            scale: layer.properties.scale || 2.0
+          });
+          
+          // Return the processed layer
+          return {
+            ...layer,
+            saved: true,
+            objectId: objectId,
+            properties: {
+              ...layer.properties,
+            rotation: layer.properties.rotation || { x: 0, y: 0, z: 0 },
+            scale: layer.properties.scale || 1.0,  // Ensure scale is included
+            type: "model3d"
+            }
+          };
+        }
+        // Handle colorfill layers
+        else if (layer.action === "colorfill" && layer.properties.svgContent) {
+          // Generate shape ID if not exists
+          const shapeId = layer.shapeId || `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Create a new canvas shape for this layer
+          newCanvasShapes.push({
+            id: shapeId,
+            svg: layer.properties.svgContent,
+            x: layer.properties.positionOrigin.x,
+            y: layer.properties.positionOrigin.y,
+            fills: {} // Empty fills when loading - will only be filled in preview mode
+          });
+          
+          // Return the processed layer
+          return {
+            ...layer,
+            saved: true,
+            shapeId: shapeId,
+            properties: {
+              ...layer.properties,
+              type: "svg"
+            }
+          };
+        }
         
-        // Create a new canvas shape for this layer
-        newCanvasShapes.push({
-          id: shapeId,
-          svg: layer.properties.svgContent,
-          x: layer.properties.positionOrigin.x,
-          y: layer.properties.positionOrigin.y,
-          fills: {} // Empty fills when loading - will only be filled in preview mode
-        });
-        
-        // Return the processed layer
+        // Handle other layer types
         return {
           ...layer,
           saved: true,
-          shapeId: shapeId,
           properties: {
             ...layer.properties,
-            type: "svg"
-          }
+            type: layer.properties.type || (layer.properties.imgUrl && layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
+          },
         };
-      }
+      });
       
-      // Handle other layer types
-      return {
-        ...layer,
-        saved: true,
-        properties: {
-          ...layer.properties,
-          type: layer.properties.type || (layer.properties.imgUrl && layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
-        },
-      };
-    });
-    
-    // Set the new canvas shapes
-    setCanvasShapes(newCanvasShapes);
-    
-    console.log("Processed layers:", apiLayers);
-    setLayers(apiLayers);
-  } catch (error) {
-    console.error("Failed to load layers:", error);
-    setLayers([]);
-  }
-}, [setLayers, setCanvasShapes]);
+      // Set the new canvas shapes and 3D objects
+      setCanvasShapes(newCanvasShapes);
+      setCanvas3DObjects(new3DObjects);
+      
+      console.log("Processed layers:", apiLayers);
+      setLayers(apiLayers);
+    } catch (error) {
+      console.error("Failed to load layers:", error);
+      setLayers([]);
+    }
+  }, [setLayers, setCanvasShapes, setCanvas3DObjects]);
 
   const switchPage = useCallback((direction) => {
     let newIndex;
@@ -225,16 +263,29 @@ const loadLayers = useCallback(async (pageId) => {
         strokeColor,
         setStrokeColor,
         
+        // 3D model context values
+        modelRotation,
+        setModelRotation,
+        modelScale,
+        setModelScale,
+        modelViewers,
+        setModelViewers,
+        canvas3DObjects,
+        setCanvas3DObjects,
+        
         // Refs
         canvasRef,
         draggedShapeRef,
+        draggedModelRef,
         toolbarDragStartRef,
         mouseInitialPosRef,
         shapeInitialPosRef,
         
-        // Moving shape
+        // Moving state
         movingShapeId,
-        setMovingShapeId
+        setMovingShapeId,
+        moving3DObjectId,
+        setMoving3DObjectId
       }}
     >
       {children}

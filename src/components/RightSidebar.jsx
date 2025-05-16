@@ -5,8 +5,10 @@ import Rotation from "../assets/icons/Home/RightSidebar/rotation.svg";
 import ColorFill from "../assets/icons/Home/RightSidebar/colorfill.svg";
 import Vibrations from "../assets/icons/Home/RightSidebar/vibration.svg";
 import AudioAction from "../assets/icons/Home/RightSidebar/audioaction.svg";
+// import Model3D from "../assets/icons/Home/RightSidebar/model3d.svg"; // You'll need to create this icon
 import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
+import { getAllAudios, uploadAudio,deleteAudio } from "../services/api";
 
 // Predefined colors
 const PRESET_COLORS = [
@@ -58,11 +60,24 @@ const RightSidebar = () => {
     setFillColor,
     strokeColor,
     setStrokeColor,
+    // 3D model properties
+    modelRotation,
+    setModelRotation,
+    modelScale,
+    setModelScale,
+    selectedLayer,
+    setCanvas3DObjects,
+    canvas3DObjects,
+    modelViewers,
+    setLayers 
   } = useContext(AppContext);
 
   const [rotationAngle, setRotationAngle] = useState(0);
   const [vibrationIntensity, setVibrationIntensity] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
+  const [audioFiles, setAudioFiles] = useState([]);
+const [loadingAudio, setLoadingAudio] = useState(false);
+const [selectedAudioId, setSelectedAudioId] = useState(null);
   
   const hexToRgb = (hex) => {
     hex = hex.replace(/^#/, "");
@@ -72,41 +87,94 @@ const RightSidebar = () => {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  // Update effect in RightSidebar.jsx
-
+  // Add useEffect to fetch audio files when audio action is selected
 useEffect(() => {
-  if (selectedAction === "colorfill") {
-    setLayerProperties((prev) => ({
-      ...prev,
-      color: selectedColors, // Store the color palette only, not the fills
-    }));
-  } else {
-    setLayerProperties((prev) => ({
-      ...prev,
-      imgUrl: selectedAsset?.src || "",
-      color: [hexToRgb(fillColor), hexToRgb(strokeColor)],
-      size: [`${assetSize.width}px`, `${assetSize.height}px`],
-      positionOrigin: assetPosition,
-      positionDestination: shadowPosition || { x: assetPosition.x + 50, y: assetPosition.y + 50 },
-      bearer: vibrationIntensity,
-      audioUrl: audioUrl,
-      rotationAngle: rotationAngle,
-    }));
-  }
-}, [
-  selectedAction,
-  selectedAsset,
-  fillColor,
-  strokeColor,
-  assetSize,
-  assetPosition,
-  shadowPosition,
-  vibrationIntensity,
-  audioUrl,
-  rotationAngle,
-  selectedColors,
-  setLayerProperties,
-]);
+  const fetchAudios = async () => {
+    if (selectedAction === "audio") {
+      setLoadingAudio(true);
+      try {
+        const response = await getAllAudios();
+        if (response && response.files && Array.isArray(response.files)) {
+          setAudioFiles(response.files);
+        }
+      } catch (error) {
+        console.error("Failed to fetch audio files:", error);
+      } finally {
+        setLoadingAudio(false);
+      }
+    }
+  };
+
+  fetchAudios();
+}, [selectedAction]);
+
+  useEffect(() => {
+    if (selectedAction === "colorfill") {
+      setLayerProperties((prev) => ({
+        ...prev,
+        color: selectedColors, // Store the color palette only, not the fills
+      }));
+    } else if (selectedAction === "model3d") {
+      // Apply immediate changes for 3D models
+      setLayerProperties((prev) => {
+        const updatedProps = {
+          ...prev,
+          imgUrl: selectedAsset?.src || "",
+          modelUrl: selectedAsset?.src || "",
+          type: "model3d",
+          size: [`${assetSize.width}px`, `${assetSize.height}px`],
+          positionOrigin: assetPosition,
+          rotation: modelRotation,
+          scale: modelScale
+        };
+        
+        // Find the matching layer and update canvas3DObjects immediately
+        if (selectedLayer && selectedLayer.objectId) {
+          // Update the object now instead of waiting for next render
+          setCanvas3DObjects(prevObjects => 
+            prevObjects.map(obj => 
+              obj.id === selectedLayer.objectId 
+                ? { 
+                  ...obj, 
+                  rotation: modelRotation,
+                  scale: modelScale
+                }
+                : obj
+            )
+          );
+        }
+        
+        return updatedProps;
+      });
+    } else {
+      setLayerProperties((prev) => ({
+        ...prev,
+        imgUrl: selectedAsset?.src || "",
+        color: [hexToRgb(fillColor), hexToRgb(strokeColor)],
+        size: [`${assetSize.width}px`, `${assetSize.height}px`],
+        positionOrigin: assetPosition,
+        positionDestination: shadowPosition || { x: assetPosition.x + 50, y: assetPosition.y + 50 },
+        bearer: vibrationIntensity,
+        audioUrl: audioUrl,
+        rotationAngle: rotationAngle,
+      }));
+    }
+  }, [
+    selectedAction,
+    selectedAsset,
+    fillColor,
+    strokeColor,
+    assetSize,
+    assetPosition,
+    shadowPosition,
+    vibrationIntensity,
+    audioUrl,
+    rotationAngle,
+    selectedColors,
+    setLayerProperties,
+    modelRotation,
+    modelScale
+  ]);
 
   const handlePositionChange = (e, axis, target) => {
     const value = parseInt(e.target.value) || 0;
@@ -119,6 +187,17 @@ useEffect(() => {
         ...prev,
         positionOrigin: { ...prev.positionOrigin, [axis]: value },
       }));
+      
+      // Mark the selected layer as unsaved
+      if (selectedLayer) {
+        setLayers(prevLayers => 
+          prevLayers.map(layer => 
+            layer._id === selectedLayer._id 
+              ? { ...layer, saved: false }
+              : layer
+          )
+        );
+      }
     } else if (target === "shadow") {
       setShadowPosition((prev) => ({
         ...prev,
@@ -128,6 +207,17 @@ useEffect(() => {
         ...prev,
         positionDestination: { ...prev.positionDestination, [axis]: value },
       }));
+      
+      // Mark the selected layer as unsaved
+      if (selectedLayer) {
+        setLayers(prevLayers => 
+          prevLayers.map(layer => 
+            layer._id === selectedLayer._id 
+              ? { ...layer, saved: false }
+              : layer
+          )
+        );
+      }
     }
   };
 
@@ -144,6 +234,104 @@ useEffect(() => {
         dimension === "height" ? `${value}px` : prev.size[1],
       ],
     }));
+    
+    // Mark the selected layer as unsaved
+    if (selectedLayer) {
+      setLayers(prevLayers => 
+        prevLayers.map(layer => 
+          layer._id === selectedLayer._id 
+            ? { ...layer, saved: false }
+            : layer
+        )
+      );
+    }
+  };
+  // Handle 3D model rotation change
+  const handleModelRotationChange = (e, axis) => {
+    const value = parseInt(e.target.value) || 0;
+     // Update rotation state
+  setModelRotation((prev) => {
+    const newRotation = { ...prev, [axis]: value };
+    
+    // If we're working with a 3D model, update canvas3DObjects
+    if (selectedLayer && selectedLayer.objectId) {
+      // Update the canvas3DObjects with the new rotation
+      setCanvas3DObjects(prevObjects => 
+        prevObjects.map(obj => 
+          obj.id === selectedLayer.objectId
+            ? { ...obj, rotation: newRotation }
+            : obj
+        )
+      );
+    }
+    
+    return newRotation;
+  });
+    
+    // Update layer properties
+    setLayerProperties((prev) => ({
+      ...prev,
+      rotation: { ...prev.rotation || modelRotation, [axis]: value },
+    }));
+    
+    // Mark the selected layer as unsaved if it's a 3D model
+    if (selectedLayer && selectedLayer.objectId) {
+      setLayers(prevLayers => 
+        prevLayers.map(layer => 
+          layer._id === selectedLayer._id 
+            ? { ...layer, saved: false }
+            : layer
+        )
+      );
+    }
+  };
+
+  // Handle 3D model scale change
+  const handleModelScaleChange = (e) => {
+    const value = parseFloat(e.target.value) || 1.0;
+    console.log("Setting scale to:", value);
+    setModelScale(value);
+    
+    // Update canvas3DObjects with the new scale
+  if (selectedLayer && selectedLayer.objectId) {
+    setCanvas3DObjects(prevObjects => 
+      prevObjects.map(obj => 
+        obj.id === selectedLayer.objectId
+          ? { ...obj, scale: value }
+          : obj
+      )
+    );
+  }
+
+    // Update the layer properties
+    setLayerProperties((prev) => ({
+      ...prev,
+      scale: value,
+    }));
+
+    console.log("layer property:", layerProperties);
+    
+    
+    // Mark the selected layer as unsaved if it's a 3D model
+    if (selectedLayer && selectedLayer.objectId) {
+      setLayers(prevLayers => 
+        prevLayers.map(layer => 
+          layer._id === selectedLayer._id 
+            ? { ...layer, saved: false }
+            : layer
+        )
+      );
+    }
+    
+    // Update the selected layer immediately if it's a 3D model
+    if (selectedLayer && selectedLayer.objectId) {
+      // Find the object
+      const object = canvas3DObjects.find(obj => obj.id === selectedLayer.objectId);
+      if (object && modelViewers[object.id]) {
+        // Update the viewer directly
+        modelViewers[object.id].setModelScale(value);
+      }
+    }
   };
 
   // Handle custom color change
@@ -387,12 +575,163 @@ useEffect(() => {
     audio: (
       <div className="layout-controls">
         <div>
-          <label>Audio URL</label>
+          <label>Position</label>
           <input
-            type="text"
-            value={audioUrl}
-            onChange={(e) => setAudioUrl(e.target.value)}
-            placeholder="Enter audio URL"
+            type="number"
+            value={assetPosition?.x ?? 0}
+            onChange={(e) => handlePositionChange(e, "x", "original")}
+            placeholder="X"
+          />
+          <input
+            type="number"
+            value={assetPosition?.y ?? 0}
+            onChange={(e) => handlePositionChange(e, "y", "original")}
+            placeholder="Y"
+          />
+        </div>
+        <div>
+          <label>Size</label>
+          <input
+            type="number"
+            value={assetSize?.width ?? 100}
+            onChange={(e) => handleSizeChange(e, "width")}
+            placeholder="W"
+          />
+          <input
+            type="number"
+            value={assetSize?.height ?? 100}
+            onChange={(e) => handleSizeChange(e, "height")}
+            placeholder="H"
+          />
+        </div>
+        <div style={{ marginTop: "15px" }}>
+          <label>Select Audio</label>
+          {loadingAudio ? (
+            <p>Loading audio files...</p>
+          ) : (
+            <select 
+              value={selectedAudioId || ""}
+              onChange={(e) => {
+                const audioId = e.target.value;
+                setSelectedAudioId(audioId);
+                
+                // Find the selected audio file
+                const selectedAudio = audioFiles.find(audio => audio._id === audioId);
+                
+                // Update audio URL in layer properties
+                setAudioUrl(selectedAudio ? selectedAudio.filePath : "");
+                
+                // Mark the layer as unsaved
+                if (selectedLayer) {
+                  setLayers(prevLayers => 
+                    prevLayers.map(layer => 
+                      layer._id === selectedLayer._id 
+                        ? { ...layer, saved: false }
+                        : layer
+                    )
+                  );
+                }
+              }}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            >
+              <option value="">-- Select an audio file --</option>
+              {audioFiles.map(audio => (
+                <option key={audio._id} value={audio._id}>
+                  {audio.fileName || "Unnamed Audio"}
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedAudioId && (
+            <div style={{ marginTop: "10px" }}>
+              <label>Preview Audio:</label>
+              <audio 
+                controls 
+                style={{ width: "100%", marginTop: "5px" }}
+                src={audioUrl}
+              />
+            </div>
+          )}
+          <div style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
+            Audio will play when this image is clicked in preview mode.
+          </div>
+        </div>
+      </div>
+    ),
+    model3d: (
+      <div className="layout-controls">
+        <div>
+          <label>Position</label>
+          <input
+            type="number"
+            value={assetPosition?.x ?? 0}
+            onChange={(e) => handlePositionChange(e, "x", "original")}
+            placeholder="X"
+          />
+          <input
+            type="number"
+            value={assetPosition?.y ?? 0}
+            onChange={(e) => handlePositionChange(e, "y", "original")}
+            placeholder="Y"
+          />
+        </div>
+        <div>
+          <label>Size</label>
+          <input
+            type="number"
+            value={assetSize?.width ?? 150}
+            onChange={(e) => handleSizeChange(e, "width")}
+            placeholder="W"
+          />
+          <input
+            type="number"
+            value={assetSize?.height ?? 150}
+            onChange={(e) => handleSizeChange(e, "height")}
+            placeholder="H"
+          />
+        </div>
+        <div>
+          <label>Rotation (degrees)</label>
+          <div className="rotation-controls">
+            <div>
+              <label>X:</label>
+              <input
+                type="number"
+                value={modelRotation?.x ?? 0}
+                onChange={(e) => handleModelRotationChange(e, "x")}
+                placeholder="0°"
+              />
+            </div>
+            <div>
+              <label>Y:</label>
+              <input
+                type="number"
+                value={modelRotation?.y ?? 0}
+                onChange={(e) => handleModelRotationChange(e, "y")}
+                placeholder="0°"
+              />
+            </div>
+            <div>
+              <label>Z:</label>
+              <input
+                type="number"
+                value={modelRotation?.z ?? 0}
+                onChange={(e) => handleModelRotationChange(e, "z")}
+                placeholder="0°"
+              />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>Scale</label>
+          <input
+            type="number"
+            value={modelScale ?? 1.0}
+            onChange={handleModelScaleChange}
+            placeholder="1.0"
+            step="0.1"
+            min="0.1"
+            max="10.0"
           />
         </div>
       </div>
@@ -405,7 +744,7 @@ useEffect(() => {
         <h3>LAYOUT</h3>
         {selectedAction && actionFields[selectedAction]}
       </div>
-      {selectedAction !== "colorfill" && (
+      {selectedAction !== "colorfill" && selectedAction !== "model3d" && (
         <>
           <div className="color-section">
             <label>Color</label>
@@ -453,6 +792,9 @@ useEffect(() => {
           </button>
           <button onClick={() => setSelectedAction("audio")}>
             <img src={AudioAction} alt="Audio Action Icon" />
+          </button>
+          <button onClick={() => setSelectedAction("model3d")}>
+            <img src={AudioAction} alt="3D Model Icon" />
           </button>
         </div>
       </div>

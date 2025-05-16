@@ -163,14 +163,24 @@ export const createLayer = async ( layerData) => {
   return response.data;
 };
 
-export const deleteLayer = async ( layerId ) => {
+export const updateLayer = async (layerId, layerData) => {
   try {
-    await api.delete(`layer/${layerId}`)
+    const response = await api.put(`/layer/${layerId}`, layerData);
+    return response.data;
   } catch (error) {
-    console.error("Error deleting layer:", error)
-    throw error
+    console.error("Error updating layer:", error);
+    throw error.response?.data || error;
   }
-}
+};
+export const deleteLayer = async (layerId) => {
+  try {
+    const response = await api.delete(`/layer/${layerId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting layer:", error);
+    throw error.response?.data || error;
+  }
+};
 
 
 //Assets uploading
