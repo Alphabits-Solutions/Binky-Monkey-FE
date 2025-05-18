@@ -33,6 +33,27 @@ export const loginUser = async (credentials) => {
   }
 };
 
+//register member
+ export const registerMember = async (data) => {
+    try {
+      const res = await api.post("/memberauth/registermember", data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  };
+
+  // Login member
+ export const loginMember = async (data) => {
+    try {
+      const res = await api.post("/memberauth/loginmember", data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  };
+
+
 export const createActivity = async (activityData) => {
   try {
     const response = await api.post("/activity", activityData);

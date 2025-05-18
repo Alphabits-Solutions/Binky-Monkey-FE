@@ -10,6 +10,7 @@ import Header from "./components/header";
 import ActivitySection from "./pages/ActivitySection";
 import Game from "./pages/Game";
 import "./assets/sass/homescreen.scss";
+import MemberAuth from "./pages/MemberAuth";
 
 const {  Content } = Layout;
 
@@ -24,6 +25,7 @@ const App = () => {
   >
       <Router>
         <Routes>
+          <Route path="/memberauth" element={<MemberAuth />} />
           <Route path="/auth" element={<Auth />} />
           <Route
             path="*"
