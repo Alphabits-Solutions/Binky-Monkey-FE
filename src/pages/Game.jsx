@@ -78,7 +78,8 @@ const GameComponent = () => {
     moving3DObjectId,
     setMoving3DObjectId,
     setSelectedAction,
-    setAssetSize
+    setAssetSize,
+    setSelectedAsset
   } = useContext(AppContext);
 
   const [isDragging, setIsDragging] = useState(false);
@@ -103,6 +104,7 @@ const audioRef = useRef(null);
 const [resizingLayerId, setResizingLayerId] = useState(null);
 const [resizingHandle, setResizingHandle] = useState(null);
 const [initialLayerSize, setInitialLayerSize] = useState({ width: 0, height: 0 });
+const [isResizingImage, setIsResizingImage] = useState(false);
 
 const handleStartResize = (e, objectId, handle) => {
   e.preventDefault();
@@ -291,6 +293,26 @@ useEffect(() => {
   }
 }, [assetPosition, assetSize, shadowPosition, modelRotation, modelScale, layerProperties]);
 
+// Add this effect to make sure layer changes are tracked
+useEffect(() => {
+  // When selectedLayer and layerProperties change, update the layer with new properties
+  if (selectedLayer && !previewMode) {
+    setLayers(prevLayers => 
+      prevLayers.map(layer => 
+        layer._id === selectedLayer._id 
+          ? { 
+              ...layer, 
+              saved: false, // Always mark as unsaved when properties change
+              properties: {
+                ...layerProperties
+              }
+            }
+          : layer
+      )
+    );
+  }
+}, [selectedLayer, layerProperties, assetPosition, assetSize, previewMode]);
+
   // Add this function to your Game.jsx component
   const handleSaveAllLayers = async () => {
     try {
@@ -423,7 +445,7 @@ const handleStartLayerResize = (e, layerId) => {
   e.stopPropagation();
   e.preventDefault();
   
-  if (previewMode) return;
+  if (previewMode && layer.action !== "resize") return;
   
   // Find the layer
   const layer = layers.find(l => l._id === layerId);
@@ -431,7 +453,21 @@ const handleStartLayerResize = (e, layerId) => {
   
   // Set resizing state
   setResizingLayerId(layerId);
-  setResizingHandle('bottom-right');
+  // setResizingHandle('bottom-right');
+  setIsResizingImage(true);
+  
+  // Select this layer
+  setSelectedLayer(layer);
+  setSelectedAction(layer.action);
+  setAssetPosition(layer.properties.positionOrigin);
+  setAssetSize({
+    width: parseInt(layer.properties.size[0]),
+    height: parseInt(layer.properties.size[1]),
+  });
+  setLayerProperties({
+    ...layer.properties,
+    rotationAngle: layer.properties.rotationAngle || 0,
+  });
   
   // Store initial values
   setInitialLayerSize({
@@ -461,7 +497,7 @@ const handleStartLayerResize = (e, layerId) => {
   );
 };
 
-// Add an effect to handle layer resizing
+// Add this useEffect to handle layer resizing
 useEffect(() => {
   if (!resizingLayerId || !resizingHandle) return;
   
@@ -474,19 +510,23 @@ useEffect(() => {
     const layer = layers.find(l => l._id === resizingLayerId);
     if (!layer) return;
     
-    // Calculate new size
+    // Calculate new size (minimum 50x50)
     const newWidth = Math.max(50, initialLayerSize.width + deltaX);
     const newHeight = Math.max(50, initialLayerSize.height + deltaY);
     
-    // Update size in assetSize state if this is the selected layer
-    if (selectedLayer && selectedLayer._id === resizingLayerId) {
-      setAssetSize({
-        width: newWidth,
-        height: newHeight
-      });
-    }
+    // Update size in assetSize state
+    setAssetSize({
+      width: newWidth,
+      height: newHeight
+    });
     
-    // Update layer properties
+    // Update layer properties state
+    setLayerProperties(prev => ({
+      ...prev,
+      size: [`${newWidth}px`, `${newHeight}px`]
+    }));
+    
+    // Update the layer directly for immediate visual feedback
     setLayers(prevLayers => 
       prevLayers.map(l => 
         l._id === resizingLayerId 
@@ -521,7 +561,7 @@ useEffect(() => {
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };
-}, [resizingLayerId, resizingHandle, initialLayerSize, layers, selectedLayer]);
+}, [resizingLayerId, resizingHandle, initialLayerSize, layers]);
 
   // Add mousemove handler to detect hovering over audio layers
 const handleCanvasMouseMove = (e) => {
@@ -852,6 +892,105 @@ const handleZoomReset = () => {
     }
   }, [movingShapeId, mouseInitialPosRef, shapeInitialPosRef, setCanvasShapes, setLayers, setMovingShapeId]);
 
+  // Add this useEffect to handle layer resizing
+  useEffect(() => {
+    if (!isResizingImage || !resizingLayerId) return;
+    
+    const handleMouseMove = (e) => {
+      // Calculate change in position
+      const deltaX = e.clientX - mouseInitialPosRef.current.x;
+      const deltaY = e.clientY - mouseInitialPosRef.current.y;
+      
+      // Find the layer
+      const layer = layers.find(l => l._id === resizingLayerId);
+      if (!layer) return;
+      
+      // Calculate new size (minimum 20x20)
+      const newWidth = Math.max(20, initialLayerSize.width + deltaX);
+      const newHeight = Math.max(20, initialLayerSize.height + deltaY);
+      
+      // In preview mode, update the previewPositions for this layer
+      if (previewMode) {
+        const layerIndex = layers.indexOf(layer);
+        if (layerIndex >= 0) {
+          setPreviewPositions(prev => {
+            const newPositions = [...prev];
+            if (newPositions[layerIndex]) {
+              // Only update the size, not the position
+              // We need to create a new layer in the positions array with the updated size
+              newPositions[layerIndex] = {
+                ...newPositions[layerIndex],
+                size: [`${newWidth}px`, `${newHeight}px`]
+              };
+            }
+            return newPositions;
+          });
+        }
+      }
+      
+      // Update size in assetSize state if this is the selected layer
+      if (selectedLayer && selectedLayer._id === resizingLayerId) {
+        setAssetSize({
+          width: newWidth,
+          height: newHeight
+        });
+        
+        // Update layer properties
+        setLayerProperties(prev => ({
+          ...prev,
+          size: [`${newWidth}px`, `${newHeight}px`]
+        }));
+      }
+      
+      // Update the layer directly for immediate visual feedback
+      setLayers(prevLayers => 
+        prevLayers.map(l => 
+          l._id === resizingLayerId 
+            ? { 
+                ...l, 
+                saved: false,
+                properties: {
+                  ...l.properties,
+                  size: [`${newWidth}px`, `${newHeight}px`]
+                }
+              }
+            : l
+        )
+      );
+      
+      // Redraw canvas
+      requestAnimationFrame(() => {
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext("2d");
+          drawLayers(ctx);
+        }
+      });
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizingImage(false);
+      setResizingLayerId(null);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [
+    isResizingImage,
+    resizingLayerId,
+    initialLayerSize,
+    layers,
+    selectedLayer,
+    previewMode,
+    setAssetSize,
+    setLayerProperties,
+    setLayers
+  ]);
+
   // Track moving 3D objects
   useEffect(() => {
     if (moving3DObjectId) {
@@ -921,6 +1060,42 @@ const handleZoomReset = () => {
     }
   };
 
+  useEffect(() => {
+    // When exiting preview mode, update the actual layer properties with changes made in preview
+    if (!previewMode && previewPositions.length > 0) {
+      // Find layers with resize action and update their actual sizes from preview state
+      layers.forEach((layer, index) => {
+        if (layer.action === "resize" && previewPositions[index]) {
+          const previewState = previewPositions[index];
+          
+          // Check if size was changed in preview mode
+          if (previewState.size && 
+              (previewState.size[0] !== layer.properties.size[0] || 
+               previewState.size[1] !== layer.properties.size[1])) {
+            
+            // Update the layer with the new size from preview mode
+            setLayers(prevLayers => 
+              prevLayers.map(l => 
+                l._id === layer._id 
+                  ? { 
+                      ...l, 
+                      saved: false, // Mark as unsaved since we changed it
+                      properties: {
+                        ...l.properties,
+                        size: previewState.size
+                      }
+                    }
+                  : l
+              )
+            );
+          }
+        }
+      });
+      
+      // Clear preview positions when exiting preview mode
+      setPreviewPositions([]);
+    }
+  }, [previewMode, previewPositions, layers, setLayers]);
   // Toggle preview mode - Clear fills when exiting preview mode
 const togglePreviewMode = () => {
   const newPreviewMode = !previewMode;
@@ -1024,14 +1199,67 @@ const togglePreviewMode = () => {
     const canvasBounds = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
     if (!canvasBounds) return;
     
-    // Calculate drop position relative to canvas
-    // const x = e.clientX - canvasBounds.left;
-    // const y = e.clientY - canvasBounds.top;
 
      // Apply zoom adjustment for drop coordinates
   const zoomFactor = canvasZoom / 100;
   const x = (e.clientX - canvasBounds.left) / zoomFactor;
   const y = (e.clientY - canvasBounds.top) / zoomFactor;
+
+  // Check for asset data (from AssetFileList)
+  const assetDataStr = e.dataTransfer.getData("asset");
+  if (assetDataStr) {
+    try {
+      const assetData = JSON.parse(assetDataStr);
+      
+      // Create a new layer for the asset immediately
+      const newLayer = {
+        name: `${assetData.name || "Image"} Layer`,
+        action: "", // No action by default
+        properties: {
+          imgUrl: assetData.src,
+          size: ["100px", "100px"],
+          positionOrigin: { x, y },
+          type: assetData.type || "image",
+        },
+        pageId: selectedPage,
+        saved: false,
+      };
+      
+      // Add the layer
+      setLayers(prevLayers => [...prevLayers, newLayer]);
+      
+      // Save the layer to the database
+      try {
+        const payload = {
+          name: newLayer.name,
+          action: newLayer.action,
+          properties: {
+            imgUrl: assetData.src,
+            size: newLayer.properties.size,
+            positionOrigin: { x, y },
+            type: assetData.type || "image",
+          },
+          pageId: selectedPage,
+        };
+        
+        const savedLayer = await createLayer(payload);
+        // Update the layer in state with the database ID
+        setLayers(prevLayers => 
+          prevLayers.map(l => 
+            l.properties.imgUrl === assetData.src && !l.saved
+              ? { ...savedLayer, saved: true }
+              : l
+          )
+        );
+      } catch (error) {
+        console.error("Error saving layer:", error);
+      }
+      
+      return; // Exit early since we've handled the asset drop
+    } catch (error) {
+      console.error("Error handling asset drop:", error);
+    }
+  }
     
     // Handle shape drop
     if (draggedShapeRef.current) {
@@ -1342,222 +1570,276 @@ const togglePreviewMode = () => {
   };
 
   // Draw all layers on canvas
-  const drawLayers = (ctx) => {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+// Update the drawLayers function to always show resize handles in non-preview mode
+const drawLayers = (ctx) => {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Draw all layers
-    layers.forEach((layer, index) => {
-      // Skip layers that aren't for this page
-      if (layer.pageId !== selectedPage) return;
+  // Draw all layers
+  layers.forEach((layer, index) => {
+    // Skip layers that aren't for this page
+    if (layer.pageId !== selectedPage) return;
+    
+    // Skip 3D layers as they are rendered separately
+    if (layer.properties.type === "model3d") return;
+    
+    if (layer.properties.imgUrl) {
+      // Determine current position based on mode
+      const currentPosition = getPreviewPosition(layer, index);
       
-      // Skip 3D layers as they are rendered separately
-      if (layer.properties.type === "model3d") return;
+      const layerType = layer.properties.type || 
+                       (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
       
-      if (layer.properties.imgUrl) {
-        // Determine current position based on mode
-        const currentPosition = getPreviewPosition(layer, index);
-        
-        const layerType = layer.properties.type || 
-                         (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
-        
-        if (layerType === "video") {
-          // Video handling
-          const video = document.createElement("video");
-          video.src = layer.properties.imgUrl;
-          video.onloadeddata = () => {
+      if (layerType === "video") {
+        // Video handling
+        const video = document.createElement("video");
+        video.src = layer.properties.imgUrl;
+        video.onloadeddata = () => {
+          ctx.drawImage(
+            video,
+            currentPosition.x,
+            currentPosition.y,
+            parseInt(layer.properties.size[0]),
+            parseInt(layer.properties.size[1])
+          );
+          
+          // Show destination in both edit mode and preview mode
+          if (layer.action === "drag" && layer.properties.positionDestination) {
+            ctx.globalAlpha = 0.5;
             ctx.drawImage(
               video,
-              currentPosition.x,
-              currentPosition.y,
+              layer.properties.positionDestination.x,
+              layer.properties.positionDestination.y,
               parseInt(layer.properties.size[0]),
               parseInt(layer.properties.size[1])
             );
-            
-            // Show destination in both edit mode and preview mode
-            if (layer.action === "drag" && layer.properties.positionDestination) {
-              ctx.globalAlpha = 0.5;
-              ctx.drawImage(
-                video,
-                layer.properties.positionDestination.x,
-                layer.properties.positionDestination.y,
-                parseInt(layer.properties.size[0]),
-                parseInt(layer.properties.size[1])
-              );
-              ctx.globalAlpha = 1.0;
-            }
-          };
-        } else {
-          // Image handling with cached images to prevent flickering
-          let img;
-          if (imageCache.current[layer.properties.imgUrl]) {
-            img = imageCache.current[layer.properties.imgUrl];
-            drawImage();
-          } else {
-            img = new Image();
-            img.src = layer.properties.imgUrl;
-            img.onload = () => {
-              imageCache.current[layer.properties.imgUrl] = img;
-              drawImage();
-            };
+            ctx.globalAlpha = 1.0;
           }
           
-          function drawImage() {
-            ctx.save();
-            
-            // Handle rotation if needed
-            if (layer.action === "rotation" && layer.properties.rotationAngle) {
-              ctx.translate(
-                currentPosition.x + parseInt(layer.properties.size[0]) / 2,
-                currentPosition.y + parseInt(layer.properties.size[1]) / 2
-              );
-              ctx.rotate((layer.properties.rotationAngle * Math.PI) / 180);
-              ctx.translate(
-                -(currentPosition.x + parseInt(layer.properties.size[0]) / 2),
-                -(currentPosition.y + parseInt(layer.properties.size[1]) / 2)
-              );
-            }
-            
-            // Draw the image at current position
-            ctx.drawImage(
-              img,
-              currentPosition.x,
-              currentPosition.y,
-              parseInt(layer.properties.size[0]),
-              parseInt(layer.properties.size[1])
-            );
-            
-            // Show destination in both edit mode and preview mode with same appearance
-            if (layer.action === "drag" && layer.properties.positionDestination) {
-              ctx.globalAlpha = 0.5;
-              ctx.drawImage(
-                img,
-                layer.properties.positionDestination.x,
-                layer.properties.positionDestination.y,
-                parseInt(layer.properties.size[0]),
-                parseInt(layer.properties.size[1])
-              );
-              ctx.globalAlpha = 1.0;
-            }
-
-            if (!previewMode) {
-              const handleSize = 8;
-              const handleX = currentPosition.x + parseInt(layer.properties.size[0]);
-              const handleY = currentPosition.y + parseInt(layer.properties.size[1]);
-              
-              // Draw the handle
-              ctx.fillStyle = '#1890ff';
-              ctx.fillRect(handleX - handleSize/2, handleY - handleSize/2, handleSize, handleSize);
-              
-              // Add a white border
-              ctx.strokeStyle = 'white';
-              ctx.lineWidth = 1;
-              ctx.strokeRect(handleX - handleSize/2, handleY - handleSize/2, handleSize, handleSize);
-            }
-            
-            ctx.restore();
-          }
+          // Draw resize handle in edit mode
+          drawResizeHandleForLayer(ctx, layer, currentPosition);
+        };
+      } else {
+        // Image handling with cached images
+        let img;
+        if (imageCache.current[layer.properties.imgUrl]) {
+          img = imageCache.current[layer.properties.imgUrl];
+          drawImageWithHandles();
+        } else {
+          img = new Image();
+          img.src = layer.properties.imgUrl;
+          img.onload = () => {
+            imageCache.current[layer.properties.imgUrl] = img;
+            drawImageWithHandles();
+          };
         }
-
-        // Add a special style for images with audio in preview mode
-        if (previewMode && layer.action === "audio" && layer.properties.audioUrl) {
+        
+        function drawImageWithHandles() {
           ctx.save();
           
-          // Determine position for indicator
-          const indicatorX = currentPosition.x + parseInt(layer.properties.size[0]) - 15;
-          const indicatorY = currentPosition.y + 15;
+          // Handle rotation if needed
+          if (layer.action === "rotation" && layer.properties.rotationAngle) {
+            ctx.translate(
+              currentPosition.x + parseInt(layer.properties.size[0]) / 2,
+              currentPosition.y + parseInt(layer.properties.size[1]) / 2
+            );
+            ctx.rotate((layer.properties.rotationAngle * Math.PI) / 180);
+            ctx.translate(
+              -(currentPosition.x + parseInt(layer.properties.size[0]) / 2),
+              -(currentPosition.y + parseInt(layer.properties.size[1]) / 2)
+            );
+          }
           
-          // Draw a subtle audio indicator background
-          ctx.beginPath();
-          ctx.arc(indicatorX, indicatorY, 10, 0, 2 * Math.PI);
+          // Draw the image at current position
+          ctx.drawImage(
+            img,
+            currentPosition.x,
+            currentPosition.y,
+            parseInt(layer.properties.size[0]),
+            parseInt(layer.properties.size[1])
+          );
           
-          // Different colors for playing vs. not playing
-          const isPlaying = playingAudioLayerId === layer._id;
-          ctx.fillStyle = isPlaying 
-            ? "rgba(255, 0, 0, 0.7)"   // Red when playing
-            : "rgba(0, 123, 255, 0.7)"; // Blue when not playing
-          ctx.fill();
+          // Show destination in both edit mode and preview mode with same appearance
+          if (layer.action === "drag" && layer.properties.positionDestination) {
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(
+              img,
+              layer.properties.positionDestination.x,
+              layer.properties.positionDestination.y,
+              parseInt(layer.properties.size[0]),
+              parseInt(layer.properties.size[1])
+            );
+            ctx.globalAlpha = 1.0;
+          }
           
-          // Draw audio icon
-          ctx.fillStyle = "white";
-          ctx.font = "bold 10px Arial";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          
-          // Different icon for playing vs. not playing
-          const icon = isPlaying ? "❚❚" : "♫";
-          ctx.fillText(icon, indicatorX, indicatorY);
-          
-          // Add a subtle hover effect for better UX
-          ctx.globalAlpha = 0.3;
-          ctx.strokeStyle = "white";
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          // Draw resize handle in edit mode
+          drawResizeHandleForLayer(ctx, layer, currentPosition);
+
+          // Draw resize handle if not in preview mode or if the action is "resize"
+    if (!previewMode || layer.action === "resize") {
+      const handleSize = 8;
+      const handleX = currentPosition.x + parseInt(layer.properties.size[0]);
+      const handleY = currentPosition.y + parseInt(layer.properties.size[1]);
+      
+      // Draw the handle
+      ctx.fillStyle = (selectedLayer && selectedLayer._id === layer._id) 
+        ? '#ff4d4f'  // Red for selected layer
+        : '#1890ff'; // Blue for other layers
+      
+      ctx.beginPath();
+      ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Add a white border
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
           
           ctx.restore();
         }
       }
-    });
 
-    // Only in edit mode, draw selected asset if not part of a layer yet
-    if (!previewMode && selectedAsset && !selectedLayer) {
-      let img;
-      if (imageCache.current[selectedAsset.src]) {
-        img = imageCache.current[selectedAsset.src];
-        ctx.drawImage(
-          img,
-          assetPosition.x,
-          assetPosition.y,
-          assetSize.width,
-          assetSize.height
-        );
-      } else {
-        img = new Image();
-        img.src = selectedAsset.src;
-        img.onload = () => {
-          imageCache.current[selectedAsset.src] = img;
-          ctx.drawImage(
-            img,
-            assetPosition.x,
-            assetPosition.y,
-            assetSize.width,
-            assetSize.height
-          );
-        };
+      // Add a special style for images with audio in preview mode
+      if (previewMode && layer.action === "audio" && layer.properties.audioUrl) {
+        drawAudioIndicator(ctx, layer, currentPosition);
       }
     }
+  });
 
-    // Shadow position in edit mode only
-    if (!previewMode && selectedAction === "drag" && shadowPosition && selectedAsset) {
-      let img;
-      if (imageCache.current[selectedAsset.src]) {
-        img = imageCache.current[selectedAsset.src];
-        ctx.globalAlpha = 0.5;
-        ctx.drawImage(
-          img,
-          shadowPosition.x,
-          shadowPosition.y,
-          assetSize.width,
-          assetSize.height
-        );
-        ctx.globalAlpha = 1.0;
-      } else {
-        img = new Image();
-        img.src = selectedAsset.src;
-        img.onload = () => {
-          imageCache.current[selectedAsset.src] = img;
-          ctx.globalAlpha = 0.5;
-          ctx.drawImage(
-            img,
-            shadowPosition.x,
-            shadowPosition.y,
-            assetSize.width,
-            assetSize.height
-          );
-          ctx.globalAlpha = 1.0;
-        };
-      }
-    }
-  };
+  // Draw selected asset if not part of a layer yet
+  if (!previewMode && selectedAsset && !selectedLayer) {
+    // drawNewAsset(ctx);
+  }
+
+  // Shadow position in edit mode only
+  if (!previewMode && selectedAction === "drag" && shadowPosition && selectedAsset) {
+    drawShadowAsset(ctx);
+  }
+};
+
+// Add these helper functions to Game.jsx
+const drawNewAsset = (ctx) => {
+  if (!selectedAsset || !selectedAsset.src) return;
+  
+  let img;
+  if (imageCache.current[selectedAsset.src]) {
+    img = imageCache.current[selectedAsset.src];
+    drawAsset();
+  } else {
+    img = new Image();
+    img.src = selectedAsset.src;
+    img.onload = () => {
+      imageCache.current[selectedAsset.src] = img;
+      drawAsset();
+    };
+  }
+  
+  function drawAsset() {
+    ctx.drawImage(
+      img,
+      assetPosition.x,
+      assetPosition.y,
+      assetSize.width,
+      assetSize.height
+    );
+  }
+};
+
+const drawShadowAsset = (ctx) => {
+  if (!selectedAsset || !selectedAsset.src || !shadowPosition) return;
+  
+  let img;
+  if (imageCache.current[selectedAsset.src]) {
+    img = imageCache.current[selectedAsset.src];
+    drawShadow();
+  } else {
+    img = new Image();
+    img.src = selectedAsset.src;
+    img.onload = () => {
+      imageCache.current[selectedAsset.src] = img;
+      drawShadow();
+    };
+  }
+  
+  function drawShadow() {
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(
+      img,
+      shadowPosition.x,
+      shadowPosition.y,
+      assetSize.width,
+      assetSize.height
+    );
+    ctx.globalAlpha = 1.0;
+  }
+};
+
+// Helper function to draw resize handle
+const drawResizeHandleForLayer = (ctx, layer, position) => {
+  if (previewMode) return;
+  
+  const handleSize = 8;
+  const handleX = position.x + parseInt(layer.properties.size[0]);
+  const handleY = position.y + parseInt(layer.properties.size[1]);
+  
+  // Draw the handle with a highlighted color if this is the selected layer
+  ctx.fillStyle = (selectedLayer && selectedLayer._id === layer._id) 
+    ? '#ff4d4f'  // Red for selected layer
+    : '#1890ff'; // Blue for other layers
+  
+  ctx.beginPath();
+  ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Add a white border
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
+  ctx.stroke();
+};
+
+
+
+// Helper function to draw audio indicator
+const drawAudioIndicator = (ctx, layer, position) => {
+  ctx.save();
+  
+  // Determine position for indicator
+  const indicatorX = position.x + parseInt(layer.properties.size[0]) - 15;
+  const indicatorY = position.y + 15;
+  
+  // Draw a subtle audio indicator background
+  ctx.beginPath();
+  ctx.arc(indicatorX, indicatorY, 10, 0, 2 * Math.PI);
+  
+  // Different colors for playing vs. not playing
+  const isPlaying = playingAudioLayerId === layer._id;
+  ctx.fillStyle = isPlaying 
+    ? "rgba(255, 0, 0, 0.7)"   // Red when playing
+    : "rgba(0, 123, 255, 0.7)"; // Blue when not playing
+  ctx.fill();
+  
+  // Draw audio icon
+  ctx.fillStyle = "white";
+  ctx.font = "bold 10px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  
+  // Different icon for playing vs. not playing
+  const icon = isPlaying ? "❚❚" : "♫";
+  ctx.fillText(icon, indicatorX, indicatorY);
+  
+  // Add a subtle hover effect for better UX
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  
+  ctx.restore();
+};
 
   // Initialize shadow position in edit mode
   useEffect(() => {
@@ -1608,6 +1890,43 @@ const togglePreviewMode = () => {
   
     if (previewMode) {
       // Check if clicking any audio-enabled layer first
+
+      // First, check for resize action handles
+      for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+        if (layer.pageId !== selectedPage) continue;
+        if (layer.action !== "resize") continue;
+        
+        const position = getPreviewPosition(layer, i);
+        const handleSize = 8;
+        const handleX = position.x + parseInt(layer.properties.size[0]);
+        const handleY = position.y + parseInt(layer.properties.size[1]);
+        
+        // Check if clicking on resize handle
+        if (
+          Math.abs(x - handleX) <= handleSize &&
+          Math.abs(y - handleY) <= handleSize
+        ) {
+          console.log("Clicked on resize handle in preview mode", layer);
+          // Set resize state
+          setIsResizingImage(true);
+          setResizingLayerId(layer._id);
+          
+          // Store initial values
+          setInitialLayerSize({
+            width: parseInt(layer.properties.size[0]),
+            height: parseInt(layer.properties.size[1])
+          });
+          
+          // Store mouse position
+          mouseInitialPosRef.current = { x: e.clientX, y: e.clientY };
+          
+          // Also store the initial position of the layer
+          shapeInitialPosRef.current = { x: position.x, y: position.y };
+          
+          return; // Exit early
+        }
+      }
       for (let index = 0; index < layers.length; index++) {
         const layer = layers[index];
         if (layer.action === "audio" && layer.pageId === selectedPage && layer.properties.audioUrl) {
@@ -1621,11 +1940,30 @@ const togglePreviewMode = () => {
           ) {
             // Handle audio playback
             handlePreviewClick(e, layer);
-            return; // Return early to prevent other interactions
+            return; // Exit early to prevent other interactions
           }
         }
       }
-      
+
+       // In preview mode, check for resize action on resize handle
+    for (let index = 0; index < layers.length; index++) {
+      const layer = layers[index];
+      if (layer.action === "resize" && layer.pageId === selectedPage) {
+        const position = getPreviewPosition(layer, index);
+        const handleSize = 8;
+        const handleX = position.x + parseInt(layer.properties.size[0]);
+        const handleY = position.y + parseInt(layer.properties.size[1]);
+        
+        // Check if clicking on resize handle
+        if (
+          Math.abs(x - handleX) <= handleSize &&
+          Math.abs(y - handleY) <= handleSize
+        ) {
+          handleStartLayerResize(e, layer);
+          return; // Exit early
+        }
+      }
+    }
       // If not clicking an audio layer, check for draggable layers
       let foundLayer = false;
       layers.forEach((layer, index) => {
@@ -1654,82 +1992,158 @@ const togglePreviewMode = () => {
         setDraggingAsset(null);
       }
     } else {
-      // Edit mode logic - handle all layer types including audio
-      const clickedLayerIndex = layers.findIndex(
-        (layer) =>
-          layer.pageId === selectedPage &&
-          layer.properties.type !== "model3d" && // Skip 3D models
-          x >= layer.properties.positionOrigin.x &&
-          x <= layer.properties.positionOrigin.x + parseInt(layer.properties.size[0]) &&
-          y >= layer.properties.positionOrigin.y &&
-          y <= layer.properties.positionOrigin.y + parseInt(layer.properties.size[1])
-      );
-  
-      if (clickedLayerIndex !== -1) {
-        const clickedLayer = layers[clickedLayerIndex];
+      
+      // First check if clicking on a resize handle
+    
+    // First check if clicking on a resize handle
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      if (layer.pageId !== selectedPage || layer.properties.type === "model3d") continue;
+      
+      const position = layer.properties.positionOrigin;
+      const handleSize = 8;
+      const handleX = position.x + parseInt(layer.properties.size[0]);
+      const handleY = position.y + parseInt(layer.properties.size[1]);
+      
+      // Check if clicking on resize handle
+      if (
+        Math.abs(x - handleX) <= handleSize &&
+        Math.abs(y - handleY) <= handleSize
+      ) {
+        console.log("Clicked on resize handle in edit mode", layer);
+        setIsResizingImage(true);
+        setResizingLayerId(layer._id);
         
-        setIsDragging(true);
-        setDragStart({
-          x: x - clickedLayer.properties.positionOrigin.x,
-          y: y - clickedLayer.properties.positionOrigin.y,
-        });
-        setDraggingAsset("original");
-        setSelectedLayer(clickedLayer);
-        setAssetPosition(clickedLayer.properties.positionOrigin);
+        // Select this layer
+        setSelectedLayer(layer);
+        setSelectedAction(layer.action || "");
+        setAssetPosition(layer.properties.positionOrigin);
         setAssetSize({
-          width: parseInt(clickedLayer.properties.size[0]),
-          height: parseInt(clickedLayer.properties.size[1]),
+          width: parseInt(layer.properties.size[0]),
+          height: parseInt(layer.properties.size[1]),
         });
-        
-        // Update selected action based on layer action
-        setSelectedAction(clickedLayer.action);
-        
         setLayerProperties({
-          ...clickedLayer.properties,
-          rotationAngle: clickedLayer.properties.rotationAngle || 0,
+          ...layer.properties,
+          rotationAngle: layer.properties.rotationAngle || 0,
         });
-      } else if (
-        shadowPosition &&
-        x >= shadowPosition.x &&
-        x <= shadowPosition.x + assetSize.width &&
-        y >= shadowPosition.y &&
-        y <= shadowPosition.y + assetSize.height
-      ) {
-        setIsDragging(true);
-        setDragStart({ x: x - shadowPosition.x, y: y - shadowPosition.y });
-        setDraggingAsset("shadow");
-      } else if (
-        selectedAsset &&
-        x >= assetPosition.x &&
-        x <= assetPosition.x + assetSize.width &&
-        y >= assetPosition.y &&
-        y <= assetPosition.y + assetSize.height
-      ) {
-        setIsDragging(true);
-        setDragStart({ x: x - assetPosition.x, y: y - assetPosition.y });
-        setDraggingAsset("original");
+        
+        // Store initial values
+        setInitialLayerSize({
+          width: parseInt(layer.properties.size[0]),
+          height: parseInt(layer.properties.size[1])
+        });
+        
+        // Store mouse position
+        mouseInitialPosRef.current = { x: e.clientX, y: e.clientY };
+        
+        // Also store the initial position of the layer
+        shapeInitialPosRef.current = { x: position.x, y: position.y };
+        
+        return; // Exit early
       }
     }
 
-    if (!previewMode) {
-      const handleSize = 8;
-      for (let i = 0; i < layers.length; i++) {
-        const layer = layers[i];
-        if (layer.pageId !== selectedPage || layer.properties.type === "model3d") continue;
+    // for (let i = 0; i < layers.length; i++) {
+    //   const layer = layers[i];
+    //   if (
+    //     layer.pageId === selectedPage &&
+    //     layer.properties.type !== "model3d" &&
+    //     x >= layer.properties.positionOrigin.x &&
+    //     x <= layer.properties.positionOrigin.x + parseInt(layer.properties.size[0]) &&
+    //     y >= layer.properties.positionOrigin.y &&
+    //     y <= layer.properties.positionOrigin.y + parseInt(layer.properties.size[1])
+    //   ) {
+    //     // Select the layer
+    //     setSelectedLayer(layer);
+    //     setSelectedAction(layer.action);
+    //     setAssetPosition(layer.properties.positionOrigin);
+    //     setAssetSize({
+    //       width: parseInt(layer.properties.size[0]),
+    //       height: parseInt(layer.properties.size[1]),
+    //     });
+    //     setLayerProperties({
+    //       ...layer.properties,
+    //       rotationAngle: layer.properties.rotationAngle || 0,
+    //     });
         
-        const position = layer.properties.positionOrigin;
-        const handleX = position.x + parseInt(layer.properties.size[0]);
-        const handleY = position.y + parseInt(layer.properties.size[1]);
+    //     // Start dragging
+    //     setIsDragging(true);
+    //     setDraggingAsset("original");
+    //     setDragStart({
+    //       x: x - layer.properties.positionOrigin.x,
+    //       y: y - layer.properties.positionOrigin.y,
+    //     });
         
-        // Check if clicking on resize handle
-        if (
-          Math.abs(x - handleX) <= handleSize &&
-          Math.abs(y - handleY) <= handleSize
-        ) {
-          handleStartLayerResize(e, layer._id);
-          return; // Exit early to prevent other handlers
-        }
-      }
+    //     return; // Exit early
+    //   }
+    // }
+    const clickedLayerIndex = layers.findIndex(
+      (layer) =>
+        layer.pageId === selectedPage &&
+        layer.properties.type !== "model3d" &&
+        x >= layer.properties.positionOrigin.x &&
+        x <= layer.properties.positionOrigin.x + parseInt(layer.properties.size[0]) &&
+        y >= layer.properties.positionOrigin.y &&
+        y <= layer.properties.positionOrigin.y + parseInt(layer.properties.size[1])
+    );
+  
+    if (clickedLayerIndex !== -1) {
+      const clickedLayer = layers[clickedLayerIndex];
+      
+      // FIX: Create a copy of the original asset to avoid reference issues
+      const assetInfo = {
+        type: clickedLayer.properties.type || "image",
+        src: clickedLayer.properties.imgUrl,
+      };
+      
+      // Select the layer and set its properties
+      setSelectedLayer(clickedLayer);
+      setSelectedAction(clickedLayer.action || "");
+      
+      // FIX: Set the selected asset with the copy we created
+      setSelectedAsset(assetInfo);
+      
+      setAssetPosition(clickedLayer.properties.positionOrigin);
+      setAssetSize({
+        width: parseInt(clickedLayer.properties.size[0]),
+        height: parseInt(clickedLayer.properties.size[1]),
+      });
+      
+      // Set layer properties
+      setLayerProperties({
+        ...clickedLayer.properties,
+        rotationAngle: clickedLayer.properties.rotationAngle || 0,
+      });
+      
+      // Start dragging the layer
+      setIsDragging(true);
+      setDragStart({
+        x: x - clickedLayer.properties.positionOrigin.x,
+        y: y - clickedLayer.properties.positionOrigin.y,
+      });
+      setDraggingAsset("original");
+    } else if (
+      shadowPosition &&
+      x >= shadowPosition.x &&
+      x <= shadowPosition.x + assetSize.width &&
+      y >= shadowPosition.y &&
+      y <= shadowPosition.y + assetSize.height
+    ) {
+      setIsDragging(true);
+      setDragStart({ x: x - shadowPosition.x, y: y - shadowPosition.y });
+      setDraggingAsset("shadow");
+    } else if (
+      selectedAsset &&
+      x >= assetPosition.x &&
+      x <= assetPosition.x + assetSize.width &&
+      y >= assetPosition.y &&
+      y <= assetPosition.y + assetSize.height
+    ) {
+      setIsDragging(true);
+      setDragStart({ x: x - assetPosition.x, y: y - assetPosition.y });
+      setDraggingAsset("original");
+    }
+    
     }
   };
 
@@ -1779,6 +2193,25 @@ const togglePreviewMode = () => {
           y: y - dragStart.y,
         };
         setAssetPosition(newPosition);
+
+         // If we have a selected layer, update its position
+      if (selectedLayer) {
+        // Update layer directly
+        setLayers(prevLayers => 
+          prevLayers.map(layer => 
+            layer._id === selectedLayer._id 
+              ? { 
+                  ...layer, 
+                  saved: false, // Mark as unsaved
+                  properties: {
+                    ...layer.properties,
+                    positionOrigin: newPosition
+                  }
+                }
+              : layer
+          )
+        );
+      }
         setLayerProperties((prev) => ({
           ...prev,
           positionOrigin: newPosition,
@@ -1793,6 +2226,24 @@ const togglePreviewMode = () => {
           ...prev,
           positionDestination: newPosition,
         }));
+
+         // If we have a selected layer, update its destination
+      if (selectedLayer) {
+        setLayers(prevLayers => 
+          prevLayers.map(layer => 
+            layer._id === selectedLayer._id 
+              ? { 
+                  ...layer, 
+                  saved: false, // Mark as unsaved
+                  properties: {
+                    ...layer.properties,
+                    positionDestination: newPosition
+                  }
+                }
+              : layer
+          )
+        );
+      }
       }
     }
     

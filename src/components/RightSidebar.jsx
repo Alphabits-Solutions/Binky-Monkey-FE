@@ -176,6 +176,53 @@ useEffect(() => {
     modelScale
   ]);
 
+  useEffect(() => {
+    // When selectedAction changes, update the selected layer with the new action
+    if (selectedLayer && selectedAction) {
+      setLayers(prevLayers => 
+        prevLayers.map(layer => 
+          layer._id === selectedLayer._id 
+            ? { ...layer, action: selectedAction, saved: false }
+            : layer
+        )
+      );
+    }
+  }, [selectedAction, selectedLayer]);
+
+  useEffect(() => {
+    if (selectedLayer) {
+      // Set rotation angle from layer properties
+      if (selectedLayer.action === "rotation" && selectedLayer.properties.rotationAngle !== undefined) {
+        setRotationAngle(selectedLayer.properties.rotationAngle);
+      } else {
+        setRotationAngle(0);
+      }
+      
+      // Set audio URL from layer properties
+      if (selectedLayer.action === "audio" && selectedLayer.properties.audioUrl) {
+        setAudioUrl(selectedLayer.properties.audioUrl);
+        
+        // Find the audio file that matches this URL
+        const audioFile = audioFiles.find(audio => audio.filePath === selectedLayer.properties.audioUrl);
+        if (audioFile) {
+          setSelectedAudioId(audioFile._id);
+        } else {
+          setSelectedAudioId(null);
+        }
+      } else {
+        setAudioUrl("");
+        setSelectedAudioId(null);
+      }
+      
+      // Set vibration intensity from layer properties
+      if (selectedLayer.action === "vibration" && selectedLayer.properties.bearer !== undefined) {
+        setVibrationIntensity(selectedLayer.properties.bearer);
+      } else {
+        setVibrationIntensity(0);
+      }
+    }
+  }, [selectedLayer, audioFiles]);
+
   const handlePositionChange = (e, axis, target) => {
     const value = parseInt(e.target.value) || 0;
     if (target === "original") {
@@ -425,6 +472,9 @@ useEffect(() => {
             onChange={(e) => handleSizeChange(e, "height")}
             placeholder="H"
           />
+        </div>
+        <div style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
+          This image can be resized in preview mode.
         </div>
       </div>
     ),
@@ -781,8 +831,11 @@ useEffect(() => {
           <button onClick={() => setSelectedAction("drag")}>
             <img src={Drag} alt="Drag Icon" />
           </button>
-          <button onClick={() => setSelectedAction("rotation")}>
+          {/* <button onClick={() => setSelectedAction("rotation")}>
             <img src={Rotation} alt="Rotation Icon" />
+          </button> */}
+          <button onClick={() => setSelectedAction("model3d")}>
+            <img src={Rotation} alt="3D Model Icon" />
           </button>
           <button onClick={() => setSelectedAction("colorfill")}>
             <img src={ColorFill} alt="Color Fill Icon" />
@@ -793,9 +846,9 @@ useEffect(() => {
           <button onClick={() => setSelectedAction("audio")}>
             <img src={AudioAction} alt="Audio Action Icon" />
           </button>
-          <button onClick={() => setSelectedAction("model3d")}>
-            <img src={AudioAction} alt="3D Model Icon" />
-          </button>
+          {/* <button onClick={() => setSelectedAction("model3d")}>
+            <img src={Rotation} alt="3D Model Icon" />
+          </button> */}
         </div>
       </div>
     </div>

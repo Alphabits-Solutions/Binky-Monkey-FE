@@ -76,20 +76,27 @@ const AssetFileList = () => {
       alert("Please select a page before selecting an asset.");
       return;
     }
+    
+    // Create asset object
     const asset = {
       id: file._id,
       src: file.filePath,
       name: file.fileName || "Asset",
       type: file.filePath.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image",
     };
+    
+    // Set selected asset
     setSelectedAsset(asset);
+    
+    // Update layer properties
     setLayerProperties((prev) => ({
       ...prev,
       imgUrl: file.filePath,
       type: asset.type,
     }));
+    
+    // Don't automatically create a layer, let the user drag it onto the canvas instead
   };
-
   if (loading) return <p>Loading files...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
@@ -136,6 +143,16 @@ const AssetFileList = () => {
                   className="file-card"
                   style={{ position: "relative" }}
                   onClick={() => handleSelectAsset(file)}
+                  draggable
+                  onDragStart={(e) => {
+                    // Set drag data
+                    e.dataTransfer.setData("asset", JSON.stringify({
+                      id: file._id,
+                      src: file.filePath,
+                      name: file.fileName || "Asset",
+                      type: file.filePath.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image",
+                    }));
+                  }}
                 >
                   <img
                     src={file.filePath}
