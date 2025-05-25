@@ -8,7 +8,7 @@ import AudioAction from "../assets/icons/Home/RightSidebar/audioaction.svg";
 // import Model3D from "../assets/icons/Home/RightSidebar/model3d.svg"; // You'll need to create this icon
 import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
-import { getAllAudios, uploadAudio,deleteAudio } from "../services/api";
+import { getAllAudios, uploadAudio,deleteAudio, createLayer, updateLayer } from "../services/api";
 
 // Predefined colors
 const PRESET_COLORS = [
@@ -49,6 +49,7 @@ const RightSidebar = () => {
     setAssetSize,
     layerProperties,
     setLayerProperties,
+    selectedPage,
     // Color fill properties
     selectedColors,
     setSelectedColors,
@@ -69,7 +70,8 @@ const RightSidebar = () => {
     setCanvas3DObjects,
     canvas3DObjects,
     modelViewers,
-    setLayers 
+    setLayers,
+    layers
   } = useContext(AppContext);
 
   const [rotationAngle, setRotationAngle] = useState(0);
@@ -189,6 +191,29 @@ useEffect(() => {
     }
   }, [selectedAction, selectedLayer]);
 
+// Replace the existing color management useEffect with this improved version:
+// Replace the color management useEffect with this:
+useEffect(() => {
+  // Update colors in the selected shape layer when colors change
+  if (selectedPage && selectedColors.length > 0 && selectedLayer && selectedLayer.action === "colorfill") {
+    // Update the selected layer's colors
+    setLayers(prevLayers => 
+      prevLayers.map(layer => 
+        layer._id === selectedLayer._id 
+          ? { 
+              ...layer, 
+              properties: {
+                ...layer.properties,
+                color: selectedColors
+              },
+              saved: false 
+            }
+          : layer
+      )
+    );
+  }
+}, [selectedColors, selectedPage, selectedLayer, setLayers]);
+
   useEffect(() => {
     if (selectedLayer) {
       // Set rotation angle from layer properties
@@ -222,6 +247,52 @@ useEffect(() => {
       }
     }
   }, [selectedLayer, audioFiles]);
+
+  // const saveColorPalette = async () => {
+  //   if (!selectedPage || !selectedColors.length) return;
+    
+  //   try {
+  //     // Check if color palette layer already exists for this page
+  //     const existingPaletteLayer = layers.find(layer => 
+  //       layer.pageId === selectedPage && 
+  //       layer.action === "colorpalette" &&
+  //       layer.name === "Color Palette"
+  //     );
+      
+  //     const paletteData = {
+  //       name: "Color Palette",
+  //       action: "colorpalette",
+  //       properties: {
+  //         colors: selectedColors,
+  //         type: "palette",
+  //         size: ["0px", "0px"], // Hidden layer
+  //         positionOrigin: { x: 0, y: 0 },
+  //         positionDestination: { x: 0, y: 0 }
+  //       },
+  //       pageId: selectedPage,
+  //     };
+      
+  //     if (existingPaletteLayer) {
+  //       // Update existing palette
+  //       const updatedLayer = await updateLayer(existingPaletteLayer._id, paletteData);
+  //       setLayers(prevLayers => 
+  //         prevLayers.map(layer => 
+  //           layer._id === existingPaletteLayer._id 
+  //             ? { ...updatedLayer, saved: true }
+  //             : layer
+  //         )
+  //       );
+  //     } else {
+  //       // Create new palette layer
+  //       const savedLayer = await createLayer(paletteData);
+  //       setLayers(prevLayers => [...prevLayers, { ...savedLayer, saved: true }]);
+  //     }
+      
+  //     console.log("Color palette saved with colors:", selectedColors);
+  //   } catch (error) {
+  //     console.error("Error saving color palette:", error);
+  //   }
+  // };
 
   const handlePositionChange = (e, axis, target) => {
     const value = parseInt(e.target.value) || 0;
@@ -387,22 +458,30 @@ useEffect(() => {
   };
 
   // Handle toggling color selection
-  const handleColorSelect = (color) => {
-    if (selectedColors.includes(color)) {
-      setSelectedColors(selectedColors.filter(c => c !== color));
-    } else if (selectedColors.length < 5) {
-      setSelectedColors([...selectedColors, color]);
-    }
-  };
+// Update the handleColorSelect function:
+const handleColorSelect = (color) => {
+  let newColors;
+  if (selectedColors.includes(color)) {
+    newColors = selectedColors.filter(c => c !== color);
+  } else if (selectedColors.length < 5) {
+    newColors = [...selectedColors, color];
+  } else {
+    return;
+  }
+  setSelectedColors(newColors);
+  // The color palette will be updated by the useEffect above
+};
 
   // Handle adding custom color to palette
-  const handleAddCustomColor = () => {
-    if (selectedColors.length < 5) {
-      setSelectedColors([...selectedColors, customColor]);
-      setShowColorPicker(false);
-    }
-  };
-
+// Update the handleAddCustomColor function:
+const handleAddCustomColor = () => {
+  if (selectedColors.length < 5) {
+    const newColors = [...selectedColors, customColor];
+    setSelectedColors(newColors);
+    setShowColorPicker(false);
+    // The color palette will be updated by the useEffect above
+  }
+};
   // Action-specific controls
   const actionFields = {
     drag: (
@@ -493,6 +572,40 @@ useEffect(() => {
     ),
     colorfill: (
       <div className="layout-controls">
+        {/* Position controls for SVG */}
+        <div>
+          <label>Position</label>
+          <input
+            type="number"
+            value={assetPosition?.x ?? 0}
+            onChange={(e) => handlePositionChange(e, "x", "original")}
+            placeholder="X"
+          />
+          <input
+            type="number"
+            value={assetPosition?.y ?? 0}
+            onChange={(e) => handlePositionChange(e, "y", "original")}
+            placeholder="Y"
+          />
+        </div>
+        
+        {/* Size controls for SVG */}
+        <div>
+          <label>Size</label>
+          <input
+            type="number"
+            value={assetSize?.width ?? 100}
+            onChange={(e) => handleSizeChange(e, "width")}
+            placeholder="W"
+          />
+          <input
+            type="number"
+            value={assetSize?.height ?? 100}
+            onChange={(e) => handleSizeChange(e, "height")}
+            placeholder="H"
+          />
+        </div>
+        
         {/* Color Palette Section */}
         <div className="color-palette-section">
           <p className="color-palette-hint">Choose up to 5 colors for your palette:</p>
@@ -513,7 +626,11 @@ useEffect(() => {
                     />
                     <button 
                       className="color-delete-btn"
-                      onClick={() => setSelectedColors(selectedColors.filter((_, i) => i !== index))}
+                      onClick={() => {
+                        const newColors = selectedColors.filter((_, i) => i !== index);
+                        setSelectedColors(newColors);
+                        // setTimeout(() => saveColorPalette(), 500);
+                      }}
                     >
                       ×
                     </button>
@@ -544,7 +661,6 @@ useEffect(() => {
               </button>
               <h4>Color Picker</h4>
               
-              {/* Color Wheel */}
               <div className="color-wheel-container">
                 <ColorWheelVisual 
                   value={customColor}
@@ -564,7 +680,6 @@ useEffect(() => {
                   />
                 </div>
                 
-                {/* Color presets for quick selection */}
                 <div className="color-presets">
                   {['#FF5252', '#4285F4', '#0F9D58', '#FFEB3B', '#9C27B0', '#FF9800', 
                     '#E91E63', '#00BCD4', '#3F51B5', '#8BC34A', '#FFC107', '#607D8B'].map(color => (
@@ -609,19 +724,19 @@ useEffect(() => {
         </div>
       </div>
     ),
-    vibration: (
-      <div className="layout-controls">
-        <div>
-          <label>Vibration Intensity</label>
-          <input
-            type="number"
-            value={vibrationIntensity}
-            onChange={(e) => setVibrationIntensity(parseInt(e.target.value) || 0)}
-            placeholder="0"
-          />
-        </div>
-      </div>
-    ),
+    // vibration: (
+    //   <div className="layout-controls">
+    //     <div>
+    //       <label>Vibration Intensity</label>
+    //       <input
+    //         type="number"
+    //         value={vibrationIntensity}
+    //         onChange={(e) => setVibrationIntensity(parseInt(e.target.value) || 0)}
+    //         placeholder="0"
+    //       />
+    //     </div>
+    //   </div>
+    // ),
     audio: (
       <div className="layout-controls">
         <div>

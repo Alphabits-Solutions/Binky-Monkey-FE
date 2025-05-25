@@ -24,7 +24,9 @@ const Pages = () => {
 
   const handleAddSlide = async () => {
     try {
-      await createPage({ title: "Untitled Page", activityId: selectedActivity });
+      const newPage = await createPage({ title: "Untitled Page", activityId: selectedActivity });
+      // Add the new page to the slides array immediately
+      setSlides(prevSlides => [...prevSlides, newPage]);
       message.success("Page created successfully!");
     } catch (error) {
       console.error("Error creating page:", error);
@@ -43,7 +45,7 @@ const Pages = () => {
       message.error("Page name cannot be empty.");
       return;
     }
-
+  
     try {
       const updated = await updatePage(editingPage._id, { title: pageName.trim() });
       setSlides((prev) =>
@@ -51,6 +53,12 @@ const Pages = () => {
           slide._id === updated._id ? { ...slide, title: updated.title } : slide
         )
       );
+      
+      // Update the page name in context if this is the selected page
+      if (selectedSlideId === updated._id) {
+        setPageName(updated.title);
+      }
+      
       message.success("Page updated successfully!");
       setIsModalVisible(false);
       setPageName("");

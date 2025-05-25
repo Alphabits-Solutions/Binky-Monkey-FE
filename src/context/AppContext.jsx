@@ -61,8 +61,17 @@ export const AppProvider = ({ children }) => {
   const [movingShapeId, setMovingShapeId] = useState(null);
   const [moving3DObjectId, setMoving3DObjectId] = useState(null);
 
+  useEffect(() => {
+    // Load activities and set the selected one from localStorage or URL params
+    const savedActivityId = localStorage.getItem('selectedActivityId');
+    if (savedActivityId && !selectedActivity) {
+      setSelectedActivity(savedActivityId);
+    }
+  }, []);
+
   const loadPages = useCallback(async () => {
     if (!selectedActivity) return;
+    localStorage.setItem('selectedActivityId', selectedActivity);
     try {
       const result = await getAllPages(selectedActivity);
       const fetchedSlides = Array.isArray(result) ? result : [];
@@ -81,6 +90,7 @@ export const AppProvider = ({ children }) => {
       setSlides([]);
     }
   }, [selectedActivity, selectedSlideId]);
+  
 
   const loadLayers = useCallback(async (pageId) => {
     if (!pageId) {
@@ -88,6 +98,7 @@ export const AppProvider = ({ children }) => {
       setLayers([]);
       setCanvasShapes([]); // Also clear canvas shapes
       setCanvas3DObjects([]); // Clear 3D objects
+      setSelectedColors([]); // Clear colors
       return;
     }
     try {
@@ -98,33 +109,42 @@ export const AppProvider = ({ children }) => {
       // Initialize new canvas shapes array for this page
       let newCanvasShapes = [];
       let new3DObjects = [];
+      let allColors = []; // Collect colors from all shape layers
       
       const apiLayers = (Array.isArray(result) ? result : []).map((layer) => {
+
+        if (layer.action === "colorfill" && layer.properties.color && Array.isArray(layer.properties.color)) {
+          // Add colors from this layer to the combined palette
+          layer.properties.color.forEach(color => {
+            if (!allColors.includes(color) && allColors.length < 5) {
+              allColors.push(color);
+            }
+          });
+        }
+
         // Handle 3D model layers
-        if (layer.action === "model3d" && layer.properties.modelUrl) {
-          // Generate object ID if not exists
+        if (layer.action === "model3d" && (layer.properties.modelUrl || layer.properties.imgUrl)) {
           const objectId = layer.objectId || `3d-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           
-          // Create a new 3D object for this layer
           new3DObjects.push({
             id: objectId,
-            modelUrl: layer.properties.modelUrl,
+            modelUrl: layer.properties.modelUrl || layer.properties.imgUrl, // Fallback to imgUrl
             x: layer.properties.positionOrigin.x,
             y: layer.properties.positionOrigin.y,
             rotation: layer.properties.rotation || { x: 0, y: 0, z: 0 },
             scale: layer.properties.scale || 2.0
           });
           
-          // Return the processed layer
           return {
             ...layer,
             saved: true,
             objectId: objectId,
             properties: {
               ...layer.properties,
-            rotation: layer.properties.rotation || { x: 0, y: 0, z: 0 },
-            scale: layer.properties.scale || 1.0,  // Ensure scale is included
-            type: "model3d"
+              modelUrl: layer.properties.modelUrl || layer.properties.imgUrl, // Ensure modelUrl is set
+              rotation: layer.properties.rotation || { x: 0, y: 0, z: 0 },
+              scale: layer.properties.scale || 1.0,
+              type: "model3d"
             }
           };
         }
@@ -165,17 +185,23 @@ export const AppProvider = ({ children }) => {
         };
       });
       
+     // FIXED: Set combined colors from all shape layers
+    console.log("Setting combined colors from shape layers:", allColors);
+    setSelectedColors(allColors);
+
       // Set the new canvas shapes and 3D objects
       setCanvasShapes(newCanvasShapes);
       setCanvas3DObjects(new3DObjects);
+      setLayers(apiLayers);
       
       console.log("Processed layers:", apiLayers);
       setLayers(apiLayers);
     } catch (error) {
       console.error("Failed to load layers:", error);
       setLayers([]);
+      setSelectedColors([]);
     }
-  }, [setLayers, setCanvasShapes, setCanvas3DObjects]);
+  }, [setLayers, setCanvasShapes, setCanvas3DObjects,setSelectedColors]);
 
   const switchPage = useCallback((direction) => {
     let newIndex;

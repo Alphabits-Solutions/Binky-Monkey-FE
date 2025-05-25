@@ -350,35 +350,34 @@ useEffect(() => {
               shapeId: layer.shapeId
             };
           } else if (layer.action === "model3d") {
-            // For 3D models, find the latest data from canvas3DObjects
-            const updatedObject = canvas3DObjects.find(obj => obj.id === layer.objectId);
-            
-            // Log to debug
-            console.log("Object from canvas3DObjects:", updatedObject);
-            
-            // Enhanced payload for 3D models with the LATEST values
-            payload = {
-              name: layer.name,
-              action: layer.action,
-              properties: {
-                modelUrl: layer.properties.modelUrl,
-                size: layer.properties.size,
-                positionOrigin: updatedObject ? 
-                  { x: updatedObject.x, y: updatedObject.y } : 
-                  layer.properties.positionOrigin,
-                positionDestination: layer.properties.positionDestination || 
-                  (updatedObject ? { x: updatedObject.x, y: updatedObject.y } : layer.properties.positionOrigin),
-                type: "model3d",
-                // Use the latest values from canvas3DObjects if available
-                rotation: updatedObject ? updatedObject.rotation : layer.properties.rotation || { x: 0, y: 0, z: 0 },
-                scale: updatedObject ? updatedObject.scale : layer.properties.scale || 1.0
-              },
-              pageId: layer.pageId,
-              objectId: layer.objectId
-            };
-            
-            // Log the payload to verify scale and rotation values
-            console.log("3D model save payload:", payload.properties.rotation, payload.properties.scale);
+           // For 3D models, find the latest data from canvas3DObjects
+  const updatedObject = canvas3DObjects.find(obj => obj.id === layer.objectId);
+  
+  console.log("Saving 3D model layer:", layer);
+  console.log("Object from canvas3DObjects:", updatedObject);
+  console.log("Layer properties modelUrl:", layer.properties.modelUrl);
+  
+  payload = {
+    name: layer.name,
+    action: layer.action,
+    properties: {
+      // Use the modelUrl from layer properties, not imgUrl
+      modelUrl: layer.properties.modelUrl || layer.properties.imgUrl,
+      size: layer.properties.size,
+      positionOrigin: updatedObject ? 
+        { x: updatedObject.x, y: updatedObject.y } : 
+        layer.properties.positionOrigin,
+      positionDestination: layer.properties.positionDestination || 
+        (updatedObject ? { x: updatedObject.x, y: updatedObject.y } : layer.properties.positionOrigin),
+      type: "model3d",
+      rotation: updatedObject ? updatedObject.rotation : layer.properties.rotation || { x: 0, y: 0, z: 0 },
+      scale: updatedObject ? updatedObject.scale : layer.properties.scale || 1.0
+    },
+    pageId: layer.pageId,
+    objectId: layer.objectId
+  };
+  
+  console.log("3D model save payload:", payload);
           } else {
             // Standard payload for other layer types
             payload = {
@@ -445,15 +444,15 @@ const handleStartLayerResize = (e, layerId) => {
   e.stopPropagation();
   e.preventDefault();
   
-  if (previewMode && layer.action !== "resize") return;
-  
-  // Find the layer
+  // FIXED: Find the layer first before using it
   const layer = layers.find(l => l._id === layerId);
   if (!layer) return;
   
+  // FIXED: Move this check after finding the layer
+  if (previewMode && layer.action !== "resize") return;
+  
   // Set resizing state
   setResizingLayerId(layerId);
-  // setResizingHandle('bottom-right');
   setIsResizingImage(true);
   
   // Select this layer
@@ -610,23 +609,25 @@ useEffect(() => {
   };
 }, []);
 
-  // Handle click on images in preview mode
+// Update the handlePreviewClick function
 const handlePreviewClick = (e, layer) => {
   if (!previewMode) return;
   
-  // If layer has audio action and audioUrl
   if (layer.action === "audio" && layer.properties.audioUrl) {
     console.log("Audio layer clicked", layer);
     
-    // If this audio is already playing, pause it
+    // Create absolute URL if needed
+    let audioUrl = layer.properties.audioUrl;
+    if (!audioUrl.startsWith('http')) {
+      audioUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}${audioUrl}`;
+    }
+    
     if (playingAudioLayerId === layer._id && audioRef.current) {
       if (!audioRef.current.paused) {
-        // If currently playing, pause it
         audioRef.current.pause();
         setPlayingAudioLayerId(null);
         console.log("Pausing audio");
       } else {
-        // If paused, play it again
         audioRef.current.play().catch(err => {
           console.error("Error playing audio:", err);
           message.error("Failed to play audio");
@@ -635,26 +636,22 @@ const handlePreviewClick = (e, layer) => {
         console.log("Resuming audio");
       }
     } else {
-      // Stop previous audio if playing
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
       
-      // Create new audio element
-      const audio = new Audio(layer.properties.audioUrl);
+      const audio = new Audio(audioUrl);
       audioRef.current = audio;
       
-      // Add ended event to reset state when audio finishes
       audio.addEventListener('ended', () => {
         setPlayingAudioLayerId(null);
       });
       
-      // Play the audio
       audio.play()
         .then(() => {
           setPlayingAudioLayerId(layer._id);
-          console.log("Started playing new audio", layer.properties.audioUrl);
+          console.log("Started playing new audio", audioUrl);
         })
         .catch(err => {
           console.error("Error playing audio:", err);
@@ -699,6 +696,12 @@ useEffect(() => {
     
     // Set action to model3d
     setSelectedAction("model3d");
+    setSelectedAsset({
+      type: "model3d",
+      src: layer.properties.modelUrl || object.modelUrl, // Use modelUrl instead of imgUrl
+      name: layer.name,
+      id: layer._id // Add layer ID to prevent new layer creation
+    });
     
     // Set position
     setAssetPosition(layer.properties.positionOrigin);
@@ -716,6 +719,8 @@ useEffect(() => {
     // Set layer properties
     setLayerProperties({
       ...layer.properties,
+      modelUrl: layer.properties.modelUrl || object.modelUrl, // Ensure modelUrl is set
+       imgUrl: "", 
       rotation: object.rotation || { x: 0, y: 0, z: 0 },
       scale: object.scale || 1.0,
     });
@@ -897,79 +902,69 @@ const handleZoomReset = () => {
     if (!isResizingImage || !resizingLayerId) return;
     
     const handleMouseMove = (e) => {
-      // Calculate change in position
       const deltaX = e.clientX - mouseInitialPosRef.current.x;
       const deltaY = e.clientY - mouseInitialPosRef.current.y;
       
-      // Find the layer
       const layer = layers.find(l => l._id === resizingLayerId);
       if (!layer) return;
       
-      // Calculate new size (minimum 20x20)
       const newWidth = Math.max(20, initialLayerSize.width + deltaX);
       const newHeight = Math.max(20, initialLayerSize.height + deltaY);
       
-      // In preview mode, update the previewPositions for this layer
       if (previewMode) {
-        const layerIndex = layers.indexOf(layer);
-        if (layerIndex >= 0) {
-          setPreviewPositions(prev => {
-            const newPositions = [...prev];
-            if (newPositions[layerIndex]) {
-              // Only update the size, not the position
-              // We need to create a new layer in the positions array with the updated size
-              newPositions[layerIndex] = {
-                ...newPositions[layerIndex],
-                size: [`${newWidth}px`, `${newHeight}px`]
-              };
-            }
-            return newPositions;
-          });
-        }
-      }
-      
-      // Update size in assetSize state if this is the selected layer
-      if (selectedLayer && selectedLayer._id === resizingLayerId) {
-        setAssetSize({
-          width: newWidth,
-          height: newHeight
+       // FIXED: Smooth preview mode resizing
+      // FIXED: Smoother preview mode resizing with immediate updates
+      const layerIndex = layers.findIndex(l => l._id === resizingLayerId);
+      if (layerIndex >= 0) {
+        setPreviewPositions(prev => {
+          const newPositions = [...prev];
+          
+          if (!newPositions[layerIndex]) {
+            newPositions[layerIndex] = {
+              index: layerIndex,
+              position: { ...layer.properties.positionOrigin },
+              size: [...layer.properties.size]
+            };
+          }
+          
+          newPositions[layerIndex] = {
+            ...newPositions[layerIndex],
+            size: [`${newWidth}px`, `${newHeight}px`]
+          };
+          
+          return newPositions;
         });
-        
-        // Update layer properties
-        setLayerProperties(prev => ({
-          ...prev,
-          size: [`${newWidth}px`, `${newHeight}px`]
-        }));
       }
-      
-      // Update the layer directly for immediate visual feedback
+      } else {
+        // In edit mode, update the actual layer and related states
+        setAssetSize({ width: newWidth, height: newHeight });
+      setLayerProperties(prev => ({ ...prev, size: [`${newWidth}px`, `${newHeight}px`] }));
       setLayers(prevLayers => 
         prevLayers.map(l => 
           l._id === resizingLayerId 
-            ? { 
-                ...l, 
-                saved: false,
-                properties: {
-                  ...l.properties,
-                  size: [`${newWidth}px`, `${newHeight}px`]
-                }
-              }
+            ? { ...l, saved: false, properties: { ...l.properties, size: [`${newWidth}px`, `${newHeight}px`] }}
             : l
         )
       );
+      }
       
       // Redraw canvas
-      requestAnimationFrame(() => {
-        if (canvasRef.current) {
-          const ctx = canvasRef.current.getContext("2d");
-          drawLayers(ctx);
-        }
-      });
+      // requestAnimationFrame(() => {
+      //   if (canvasRef.current) {
+      //     const ctx = canvasRef.current.getContext("2d");
+      //     drawLayers(ctx);
+      //   }
+      // });
     };
     
     const handleMouseUp = () => {
       setIsResizingImage(false);
       setResizingLayerId(null);
+      
+      // If in preview mode, the changes are temporary and will be reset when exiting preview
+      if (previewMode) {
+        console.log("Resize in preview mode completed - changes are temporary");
+      }
     };
     
     document.addEventListener('mousemove', handleMouseMove);
@@ -1060,42 +1055,45 @@ const handleZoomReset = () => {
     }
   };
 
-  useEffect(() => {
-    // When exiting preview mode, update the actual layer properties with changes made in preview
-    if (!previewMode && previewPositions.length > 0) {
-      // Find layers with resize action and update their actual sizes from preview state
-      layers.forEach((layer, index) => {
-        if (layer.action === "resize" && previewPositions[index]) {
-          const previewState = previewPositions[index];
-          
-          // Check if size was changed in preview mode
-          if (previewState.size && 
-              (previewState.size[0] !== layer.properties.size[0] || 
-               previewState.size[1] !== layer.properties.size[1])) {
+  // useEffect(() => {
+  //   // When exiting preview mode, update the actual layer properties with changes made in preview
+  //   if (!previewMode && previewPositions.length > 0) {
+  //     // Find layers with resize action and update their actual sizes from preview state
+  //     layers.forEach((layer, index) => {
+  //       if (layer.action === "resize" && previewPositions[index]) {
+  //         if (layer.action === "resize" && previewPositions[index]) {
+  //           // Reset layer to original size - don't save preview changes
+  //           console.log("Resetting resize layer to original size after preview");
             
-            // Update the layer with the new size from preview mode
-            setLayers(prevLayers => 
-              prevLayers.map(l => 
-                l._id === layer._id 
-                  ? { 
-                      ...l, 
-                      saved: false, // Mark as unsaved since we changed it
-                      properties: {
-                        ...l.properties,
-                        size: previewState.size
-                      }
-                    }
-                  : l
-              )
-            );
-          }
-        }
-      });
+  //           // Force redraw to show original sizes
+  //           if (canvasRef.current) {
+  //             const ctx = canvasRef.current.getContext("2d");
+  //             drawLayers(ctx);
+  //           }
+  //         }
+  //       }
+  //     });
       
-      // Clear preview positions when exiting preview mode
-      setPreviewPositions([]);
+  //     // Clear preview positions when exiting preview mode
+  //     setPreviewPositions([]);
+  //   }
+  // }, [previewMode, previewPositions, layers]);
+
+  // Update the preview mode exit useEffect:
+useEffect(() => {
+  if (!previewMode && previewPositions.length > 0) {
+    // FIXED: Reset all preview changes when exiting preview mode
+    console.log("Resetting all preview changes when exiting preview mode");
+    setPreviewPositions([]);
+    
+    // Force redraw to show original sizes
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext("2d");
+      drawLayers(ctx);
     }
-  }, [previewMode, previewPositions, layers, setLayers]);
+  }
+}, [previewMode, previewPositions]);
+
   // Toggle preview mode - Clear fills when exiting preview mode
 const togglePreviewMode = () => {
   const newPreviewMode = !previewMode;
@@ -1190,6 +1188,7 @@ const togglePreviewMode = () => {
     }
     return layer.properties.positionOrigin;
   };
+
 
   // Handle canvas drop for shapes, images, and 3D models
   const handleCanvasDrop = async (e) => {
@@ -1317,6 +1316,8 @@ const togglePreviewMode = () => {
               }
             }
           }
+
+
         } catch (error) {
           console.error('Error processing SVG content:', error);
         }
@@ -1325,12 +1326,12 @@ const togglePreviewMode = () => {
         svgContent = enhanceSvgVisibility(svgContent);
         
         // Ensure SVG has namespace if not present
-        if (!svgContent.includes('xmlns')) {
-          svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-        }
+    if (!svgContent.includes('xmlns')) {
+      svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
         
         // Add shape to canvas if it's color fill action
-        if (selectedAction === "colorfill") {
+        // if (selectedAction === "colorfill") {
           // Generate a unique ID for the shape
           const shapeId = `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           
@@ -1345,27 +1346,45 @@ const togglePreviewMode = () => {
           };
           
           // Add the shape to canvasShapes
-          setCanvasShapes(prevShapes => [...prevShapes, shapeObj]);
+    setCanvasShapes(prevShapes => [...prevShapes, shapeObj]);
+    
           
-          // Create a corresponding layer for tracking
-          const newLayer = {
-            name: `Shape ${layers.length + 1}`,
-            action: "colorfill",
-            properties: {
-              color: selectedColors, // Store the color palette
-              size: ["100px", "100px"],
-              positionOrigin: { x, y },
-              imgUrl: "",
-              type: "svg",
-              svgContent: svgContent, // Store the SVG content
-            },
-            pageId: selectedPage,
-            saved: false,
-            shapeId: shapeId // Reference to the shape in canvasShapes
-          };
+           // FIXED: Automatically set colorfill action and create layer immediately
+    // FIXED: Create shape layer with current colors (Approach B)
+    const newLayer = {
+      name: `Shape ${layers.length + 1}`,
+      action: "colorfill",
+      properties: {
+        color: selectedColors.length > 0 ? selectedColors : ['#FF5252'], // Default color if none selected
+        size: ["100px", "100px"],
+        positionOrigin: { x, y },
+        imgUrl: "",
+        type: "svg",
+        svgContent: svgContent,
+      },
+      pageId: selectedPage,
+      saved: false,
+      shapeId: shapeId
+    };
           
-          // Add the layer
-          setLayers(prevLayers => [...prevLayers, newLayer]);
+     // Add the layer immediately
+     setLayers(prevLayers => [...prevLayers, newLayer]);
+    
+     // Set as selected immediately so it's visible
+     setSelectedLayer(newLayer);
+     setSelectedAction("colorfill");
+     setSelectedAsset({
+       type: "svg",
+       src: svgContent,
+       name: newLayer.name,
+       id: `temp-${shapeId}` 
+     });
+    
+     // Set position and size for immediate visibility
+    setAssetPosition({ x, y });
+    setAssetSize({ width: 100, height: 100 });
+  
+    
           
           // Save the layer to the database
           try {
@@ -1373,7 +1392,7 @@ const togglePreviewMode = () => {
               name: newLayer.name,
               action: newLayer.action,
               properties: {
-                color: selectedColors,
+                color: newLayer.properties.color,
                 size: newLayer.properties.size,
                 positionOrigin: newLayer.properties.positionOrigin,
                 positionDestination: newLayer.properties.positionOrigin, // Set default destination
@@ -1397,7 +1416,8 @@ const togglePreviewMode = () => {
           } catch (error) {
             console.error("Error saving layer:", error);
           }
-        }
+        // }
+        
       } catch (error) {
         console.error('Error adding shape to canvas:', error);
       } finally {
@@ -1581,10 +1601,16 @@ const drawLayers = (ctx) => {
     
     // Skip 3D layers as they are rendered separately
     if (layer.properties.type === "model3d") return;
+    if (layer.action === "colorpalette") return; // Skip color palette layers
     
     if (layer.properties.imgUrl) {
       // Determine current position based on mode
       const currentPosition = getPreviewPosition(layer, index);
+       // FIXED: Use preview size if in preview mode and available
+       let currentSize = layer.properties.size;
+       if (previewPositions[index] && previewPositions[index].size) {
+        currentSize = previewPositions[index].size;
+      }
       
       const layerType = layer.properties.type || 
                        (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
@@ -1598,8 +1624,10 @@ const drawLayers = (ctx) => {
             video,
             currentPosition.x,
             currentPosition.y,
-            parseInt(layer.properties.size[0]),
-            parseInt(layer.properties.size[1])
+            // parseInt(layer.properties.size[0]),
+            // parseInt(layer.properties.size[1])
+            parseInt(currentSize[0]), // Use currentSize
+            parseInt(currentSize[1])  // Use currentSize
           );
           
           // Show destination in both edit mode and preview mode
@@ -1616,7 +1644,7 @@ const drawLayers = (ctx) => {
           }
           
           // Draw resize handle in edit mode
-          drawResizeHandleForLayer(ctx, layer, currentPosition);
+          drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
         };
       } else {
         // Image handling with cached images
@@ -1654,8 +1682,10 @@ const drawLayers = (ctx) => {
             img,
             currentPosition.x,
             currentPosition.y,
-            parseInt(layer.properties.size[0]),
-            parseInt(layer.properties.size[1])
+            // parseInt(layer.properties.size[0]),
+            // parseInt(layer.properties.size[1])
+            parseInt(currentSize[0]), // Use currentSize
+            parseInt(currentSize[1])  // Use currentSize
           );
           
           // Show destination in both edit mode and preview mode with same appearance
@@ -1672,30 +1702,30 @@ const drawLayers = (ctx) => {
           }
           
           // Draw resize handle in edit mode
-          drawResizeHandleForLayer(ctx, layer, currentPosition);
+          drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
 
           // Draw resize handle if not in preview mode or if the action is "resize"
-    if (!previewMode || layer.action === "resize") {
-      const handleSize = 8;
-      const handleX = currentPosition.x + parseInt(layer.properties.size[0]);
-      const handleY = currentPosition.y + parseInt(layer.properties.size[1]);
+    // if (!previewMode || layer.action === "resize") {
+    //   const handleSize = 8;
+    //   const handleX = currentPosition.x + parseInt(layer.properties.size[0]);
+    //   const handleY = currentPosition.y + parseInt(layer.properties.size[1]);
       
-      // Draw the handle
-      ctx.fillStyle = (selectedLayer && selectedLayer._id === layer._id) 
-        ? '#ff4d4f'  // Red for selected layer
-        : '#1890ff'; // Blue for other layers
+    //   // Draw the handle
+    //   ctx.fillStyle = (selectedLayer && selectedLayer._id === layer._id) 
+    //     ? '#ff4d4f'  // Red for selected layer
+    //     : '#1890ff'; // Blue for other layers
       
-      ctx.beginPath();
-      ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
-      ctx.fill();
+    //   ctx.beginPath();
+    //   ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
+    //   ctx.fill();
       
-      // Add a white border
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    //   // Add a white border
+    //   ctx.strokeStyle = 'white';
+    //   ctx.lineWidth = 1;
+    //   ctx.beginPath();
+    //   ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
+    //   ctx.stroke();
+    // }
           
           ctx.restore();
         }
@@ -1777,14 +1807,15 @@ const drawShadowAsset = (ctx) => {
 };
 
 // Helper function to draw resize handle
-const drawResizeHandleForLayer = (ctx, layer, position) => {
-  if (previewMode) return;
+// Update the drawResizeHandleForLayer function:
+const drawResizeHandleForLayer = (ctx, layer, position, size = layer.properties.size) => {
+  // FIXED: Show resize handles properly based on mode and action
+  if (previewMode && layer.action !== "resize") return;
   
   const handleSize = 8;
-  const handleX = position.x + parseInt(layer.properties.size[0]);
-  const handleY = position.y + parseInt(layer.properties.size[1]);
+  const handleX = position.x + parseInt(size[0]);
+  const handleY = position.y + parseInt(size[1]);
   
-  // Draw the handle with a highlighted color if this is the selected layer
   ctx.fillStyle = (selectedLayer && selectedLayer._id === layer._id) 
     ? '#ff4d4f'  // Red for selected layer
     : '#1890ff'; // Blue for other layers
@@ -1793,7 +1824,6 @@ const drawResizeHandleForLayer = (ctx, layer, position) => {
   ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
   ctx.fill();
   
-  // Add a white border
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -1892,41 +1922,46 @@ const drawAudioIndicator = (ctx, layer, position) => {
       // Check if clicking any audio-enabled layer first
 
       // First, check for resize action handles
-      for (let i = 0; i < layers.length; i++) {
-        const layer = layers[i];
-        if (layer.pageId !== selectedPage) continue;
-        if (layer.action !== "resize") continue;
-        
-        const position = getPreviewPosition(layer, i);
-        const handleSize = 8;
-        const handleX = position.x + parseInt(layer.properties.size[0]);
-        const handleY = position.y + parseInt(layer.properties.size[1]);
-        
-        // Check if clicking on resize handle
-        if (
-          Math.abs(x - handleX) <= handleSize &&
-          Math.abs(y - handleY) <= handleSize
-        ) {
-          console.log("Clicked on resize handle in preview mode", layer);
-          // Set resize state
-          setIsResizingImage(true);
-          setResizingLayerId(layer._id);
-          
-          // Store initial values
-          setInitialLayerSize({
-            width: parseInt(layer.properties.size[0]),
-            height: parseInt(layer.properties.size[1])
-          });
-          
-          // Store mouse position
-          mouseInitialPosRef.current = { x: e.clientX, y: e.clientY };
-          
-          // Also store the initial position of the layer
-          shapeInitialPosRef.current = { x: position.x, y: position.y };
-          
-          return; // Exit early
-        }
+      // Fix for Issue 3: Check for resize action handles in preview mode
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      if (layer.pageId !== selectedPage) continue;
+      if (layer.action !== "resize") continue;
+      
+      const position = getPreviewPosition(layer, i);
+      const handleSize = 8;
+      
+      // Use preview size if available, otherwise use layer size
+      let currentSize = layer.properties.size;
+      if (previewPositions[i] && previewPositions[i].size) {
+        currentSize = previewPositions[i].size;
       }
+      
+      const handleX = position.x + parseInt(currentSize[0]);
+      const handleY = position.y + parseInt(currentSize[1]);
+      
+      // Check if clicking on resize handle
+      if (
+        Math.abs(x - handleX) <= handleSize &&
+        Math.abs(y - handleY) <= handleSize
+      ) {
+        console.log("Clicked on resize handle in preview mode", layer);
+        setIsResizingImage(true);
+        setResizingLayerId(layer._id);
+        
+        // Store initial values
+        setInitialLayerSize({
+          width: parseInt(currentSize[0]),
+          height: parseInt(currentSize[1])
+        });
+        
+        // Store mouse position
+        mouseInitialPosRef.current = { x: e.clientX, y: e.clientY };
+        shapeInitialPosRef.current = { x: position.x, y: position.y };
+        
+        return; // Exit early
+      }
+    }
       for (let index = 0; index < layers.length; index++) {
         const layer = layers[index];
         if (layer.action === "audio" && layer.pageId === selectedPage && layer.properties.audioUrl) {
@@ -2281,6 +2316,11 @@ const drawAudioIndicator = (ctx, layer, position) => {
           });
         }
       }
+      // For resize action in preview mode, don't persist changes
+    if (layer && layer.action === "resize") {
+      console.log("Resize in preview mode - changes will not be saved");
+      // Size changes in preview mode are temporary and handled by previewPositions
+    }
     }
     
     setIsDragging(false);
