@@ -10,6 +10,9 @@ import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 import { getAllAudios, uploadAudio,deleteAudio, createLayer, updateLayer } from "../services/api";
 
+import DestinationImageSelector from './DestinationImageSelector';
+import { Button,message } from "antd";
+
 // Predefined colors
 const PRESET_COLORS = [
   { name: 'Red', value: '#FF5252' },
@@ -71,7 +74,11 @@ const RightSidebar = () => {
     canvas3DObjects,
     modelViewers,
     setLayers,
-    layers
+    layers,
+    destinationImage,
+    setDestinationImage,
+    showDestinationSelector,
+    setShowDestinationSelector,
   } = useContext(AppContext);
 
   const [rotationAngle, setRotationAngle] = useState(0);
@@ -213,6 +220,87 @@ useEffect(() => {
     );
   }
 }, [selectedColors, selectedPage, selectedLayer, setLayers]);
+
+useEffect(() => {
+  if (selectedAction === "drag") {
+    setLayerProperties((prev) => ({
+      ...prev,
+      imgUrl: selectedAsset?.src || "",
+      color: [hexToRgb(fillColor), hexToRgb(strokeColor)],
+      size: [`${assetSize.width}px`, `${assetSize.height}px`],
+      positionOrigin: assetPosition,
+      positionDestination: shadowPosition || { x: assetPosition.x + 50, y: assetPosition.y + 50 },
+      bearer: vibrationIntensity,
+      audioUrl: audioUrl,
+      rotationAngle: rotationAngle,
+      destinationImgUrl: layerProperties.destinationImgUrl || "", // ADDED: Preserve destination image
+    }));
+  } else if (selectedAction === "colorfill") {
+    setLayerProperties((prev) => ({
+      ...prev,
+      color: selectedColors,
+    }));
+  } else if (selectedAction === "model3d") {
+    setLayerProperties((prev) => {
+      const updatedProps = {
+        ...prev,
+        imgUrl: selectedAsset?.src || "",
+        modelUrl: selectedAsset?.src || "",
+        type: "model3d",
+        size: [`${assetSize.width}px`, `${assetSize.height}px`],
+        positionOrigin: assetPosition,
+        rotation: modelRotation,
+        scale: modelScale
+      };
+      
+      if (selectedLayer && selectedLayer.objectId) {
+        setCanvas3DObjects(prevObjects => 
+          prevObjects.map(obj => 
+            obj.id === selectedLayer.objectId 
+              ? { 
+                ...obj, 
+                rotation: modelRotation,
+                scale: modelScale
+              }
+              : obj
+          )
+        );
+      }
+      
+      return updatedProps;
+    });
+  } else {
+    setLayerProperties((prev) => ({
+      ...prev,
+      imgUrl: selectedAsset?.src || "",
+      color: [hexToRgb(fillColor), hexToRgb(strokeColor)],
+      size: [`${assetSize.width}px`, `${assetSize.height}px`],
+      positionOrigin: assetPosition,
+      positionDestination: shadowPosition || { x: assetPosition.x + 50, y: assetPosition.y + 50 },
+      bearer: vibrationIntensity,
+      audioUrl: audioUrl,
+      rotationAngle: rotationAngle,
+      destinationImgUrl: layerProperties.destinationImgUrl || "", // ADDED: Preserve destination image for all actions
+    }));
+  }
+}, [
+  selectedAction,
+  selectedAsset,
+  fillColor,
+  strokeColor,
+  assetSize,
+  assetPosition,
+  shadowPosition,
+  vibrationIntensity,
+  audioUrl,
+  rotationAngle,
+  selectedColors,
+  setLayerProperties,
+  modelRotation,
+  modelScale,
+  layerProperties.destinationImgUrl // ADDED: Include as dependency
+]);
+
 
   useEffect(() => {
     if (selectedLayer) {
@@ -484,57 +572,125 @@ const handleAddCustomColor = () => {
 };
   // Action-specific controls
   const actionFields = {
-    drag: (
-      <div className="layout-controls">
-        <div>
-          <label>Origin</label>
-          <input
-            type="number"
-            value={assetPosition?.x ?? 0}
-            onChange={(e) => handlePositionChange(e, "x", "original")}
-            placeholder="X"
-          />
-          <input
-            type="number"
-            value={assetPosition?.y ?? 0}
-            onChange={(e) => handlePositionChange(e, "y", "original")}
-            placeholder="Y"
-          />
+  // Update the drag action controls in the actionFields object:
+drag: (
+  <div className="layout-controls">
+    <div>
+      <label>Origin Position</label>
+      <input
+        type="number"
+        value={assetPosition?.x ?? 0}
+        onChange={(e) => handlePositionChange(e, "x", "original")}
+        placeholder="X"
+      />
+      <input
+        type="number"
+        value={assetPosition?.y ?? 0}
+        onChange={(e) => handlePositionChange(e, "y", "original")}
+        placeholder="Y"
+      />
+    </div>
+    
+    <div>
+      <label>Destination Position</label>
+      <input
+        type="number"
+        value={shadowPosition?.x ?? ""}
+        onChange={(e) => handlePositionChange(e, "x", "shadow")}
+        placeholder="X"
+        disabled={!shadowPosition}
+      />
+      <input
+        type="number"
+        value={shadowPosition?.y ?? ""}
+        onChange={(e) => handlePositionChange(e, "y", "shadow")}
+        placeholder="Y"
+        disabled={!shadowPosition}
+      />
+    </div>
+    
+    <div>
+      <label>Size</label>
+      <input
+        type="number"
+        value={assetSize?.width ?? 100}
+        onChange={(e) => handleSizeChange(e, "width")}
+        placeholder="W"
+      />
+      <input
+        type="number"
+        value={assetSize?.height ?? 100}
+        onChange={(e) => handleSizeChange(e, "height")}
+        placeholder="H"
+      />
+    </div>
+
+    {/* NEW: Destination Image Section */}
+    <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#333' }}>
+        Destination Image
+      </label>
+      
+      {layerProperties.destinationImgUrl ? (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px',
+            padding: '8px',
+            backgroundColor: 'white',
+            borderRadius: '4px',
+            border: '1px solid #d9d9d9'
+          }}>
+            <img 
+              src={layerProperties.destinationImgUrl} 
+              alt="Destination" 
+              style={{ 
+                width: '40px', 
+                height: '40px', 
+                objectFit: 'cover', 
+                borderRadius: '4px' 
+              }} 
+            />
+            <div style={{ flex: 1, fontSize: '12px', color: '#666' }}>
+              Destination image set
+            </div>
+            <Button 
+              size="small" 
+              onClick={() => setShowDestinationSelector(true)}
+              style={{ fontSize: '11px' }}
+            >
+              Change
+            </Button>
+          </div>
         </div>
-        <div>
-          <label>Destination</label>
-          <input
-            type="number"
-            value={shadowPosition?.x ?? ""}
-            onChange={(e) => handlePositionChange(e, "x", "shadow")}
-            placeholder="X"
-            disabled={!shadowPosition}
-          />
-          <input
-            type="number"
-            value={shadowPosition?.y ?? ""}
-            onChange={(e) => handlePositionChange(e, "y", "shadow")}
-            placeholder="Y"
-            disabled={!shadowPosition}
-          />
+      ) : (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ 
+            padding: '20px', 
+            textAlign: 'center', 
+            backgroundColor: 'white',
+            border: '2px dashed #d9d9d9', 
+            borderRadius: '4px',
+            color: '#999'
+          }}>
+            <p style={{ margin: 0, fontSize: '12px' }}>No destination image selected</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '11px' }}>Will use shadow of original image</p>
+          </div>
         </div>
-        <div>
-          <label>Size</label>
-          <input
-            type="number"
-            value={assetSize?.width ?? 100}
-            onChange={(e) => handleSizeChange(e, "width")}
-            placeholder="W"
-          />
-          <input
-            type="number"
-            value={assetSize?.height ?? 100}
-            onChange={(e) => handleSizeChange(e, "height")}
-            placeholder="H"
-          />
-        </div>
-      </div>
-    ),
+      )}
+      
+      <Button 
+        type="primary" 
+        size="small" 
+        onClick={() => setShowDestinationSelector(true)}
+        style={{ width: '100%', fontSize: '12px' }}
+      >
+        {layerProperties.destinationImgUrl ? 'Change Destination Image' : 'Set Destination Image'}
+      </Button>
+    </div>
+  </div>
+),
     resize: (
       <div className="layout-controls">
         <div>
@@ -966,6 +1122,38 @@ const handleAddCustomColor = () => {
           </button> */}
         </div>
       </div>
+      <DestinationImageSelector
+  visible={showDestinationSelector}
+  onClose={() => setShowDestinationSelector(false)}
+  currentDestination={layerProperties.destinationImgUrl ? { filePath: layerProperties.destinationImgUrl } : null}
+  onSelect={(asset) => {
+    const destinationUrl = asset ? asset.filePath : "";
+    setLayerProperties(prev => ({
+      ...prev,
+      destinationImgUrl: destinationUrl
+    }));
+    
+    // Update the selected layer if exists
+    if (selectedLayer) {
+      setLayers(prevLayers => 
+        prevLayers.map(layer => 
+          layer._id === selectedLayer._id 
+            ? { 
+                ...layer, 
+                saved: false,
+                properties: {
+                  ...layer.properties,
+                  destinationImgUrl: destinationUrl
+                }
+              }
+            : layer
+        )
+      );
+    }
+    
+    message.success(asset ? 'Destination image updated!' : 'Destination image removed!');
+  }}
+/>
     </div>
   );
 };

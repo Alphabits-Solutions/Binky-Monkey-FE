@@ -254,9 +254,84 @@ useEffect(() => {
   };
   
   const handleMouseUp = () => {
-    setIsResizing(false);
-    setResizingObjectId(null);
-    setResizeHandle(null);
+    if (previewMode && isDragging && typeof draggingAsset === 'number') {
+      const layer = layers[draggingAsset];
+      
+      if (layer && layer.action === "drag" && layer.properties.positionDestination) {
+        const currentPosition = previewPositions[draggingAsset].position;
+        
+        if (!isNearDestination(currentPosition, layer.properties.positionDestination)) {
+          // Not in destination - apply vibration
+          applyVibration(draggingAsset);
+        } else {
+          // Successfully dropped at destination
+          console.log("Successfully dropped at destination!");
+          
+          // UPDATED: Show success feedback based on destination type
+          if (layer.properties.destinationImgUrl && layer.properties.destinationImgUrl !== "") {
+            // Custom destination image - show special success effect
+            showDestinationSuccess(draggingAsset);
+          } else {
+            // Regular shadow destination - normal success
+            setPreviewPositions(prev => {
+              const newPositions = [...prev];
+              newPositions[draggingAsset] = {
+                ...newPositions[draggingAsset],
+                position: { ...layer.properties.positionDestination }
+              };
+              return newPositions;
+            });
+          }
+        }
+      }
+      
+      if (layer && layer.action === "resize") {
+        console.log("Resize in preview mode - changes will not be saved");
+      }
+    }
+    
+    setIsDragging(false);
+    setDraggingAsset(null);
+  };
+
+  const showDestinationSuccess = (layerIndex) => {
+    // Snap to destination
+    setPreviewPositions(prev => {
+      const newPositions = [...prev];
+      const layer = layers[layerIndex];
+      newPositions[layerIndex] = {
+        ...newPositions[layerIndex],
+        position: { ...layer.properties.positionDestination }
+      };
+      return newPositions;
+    });
+    
+    // Show a brief success animation
+    const layer = layers[layerIndex];
+    setTimeout(() => {
+      // You can add a success sound or visual effect here
+      console.log(`Successfully matched with custom destination image!`);
+      
+      // Optional: Add a brief highlight effect
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext("2d");
+        ctx.save();
+        ctx.strokeStyle = "#52c41a"; // Success green
+        ctx.lineWidth = 4;
+        ctx.strokeRect(
+          layer.properties.positionDestination.x - 2,
+          layer.properties.positionDestination.y - 2,
+          parseInt(layer.properties.size[0]) + 4,
+          parseInt(layer.properties.size[1]) + 4
+        );
+        ctx.restore();
+        
+        // Remove highlight after 500ms
+        setTimeout(() => {
+          drawLayers(ctx);
+        }, 500);
+      }
+    }, 100);
   };
   
   document.addEventListener('mousemove', handleMouseMove);
@@ -392,7 +467,8 @@ useEffect(() => {
                 imgUrl: layer.properties.imgUrl,
                 audioUrl: layer.properties.audioUrl,
                 type: layer.properties.type,
-                rotationAngle: layer.properties.rotationAngle
+                rotationAngle: layer.properties.rotationAngle,
+                destinationImgUrl: layer.properties.destinationImgUrl || "" // NEW: Include destination image
               },
               pageId: layer.pageId,
             };
@@ -1055,6 +1131,40 @@ const handleZoomReset = () => {
     }
   };
 
+  const preloadDestinationImages = () => {
+    layers.forEach(layer => {
+      // Preload destination images
+      if (layer.properties.destinationImgUrl && 
+          layer.properties.destinationImgUrl !== "" && 
+          !imageCache.current[layer.properties.destinationImgUrl]) {
+        const img = new Image();
+        img.src = layer.properties.destinationImgUrl;
+        img.onload = () => {
+          imageCache.current[layer.properties.destinationImgUrl] = img;
+          console.log("Preloaded destination image:", layer.properties.destinationImgUrl);
+        };
+        img.onerror = () => {
+          console.error("Failed to preload destination image:", layer.properties.destinationImgUrl);
+        };
+      }
+      
+      // Also preload destination image from layerProperties if it exists
+      if (layerProperties.destinationImgUrl && 
+          layerProperties.destinationImgUrl !== "" && 
+          !imageCache.current[layerProperties.destinationImgUrl]) {
+        const img = new Image();
+        img.src = layerProperties.destinationImgUrl;
+        img.onload = () => {
+          imageCache.current[layerProperties.destinationImgUrl] = img;
+          console.log("Preloaded current destination image:", layerProperties.destinationImgUrl);
+        };
+        img.onerror = () => {
+          console.error("Failed to preload current destination image:", layerProperties.destinationImgUrl);
+        };
+      }
+    });
+  };
+
   // useEffect(() => {
   //   // When exiting preview mode, update the actual layer properties with changes made in preview
   //   if (!previewMode && previewPositions.length > 0) {
@@ -1647,128 +1757,288 @@ const drawLayers = (ctx) => {
   // Get current page layers only
   const currentPageLayers = layers.filter(layer => layer.pageId === selectedPage);
 
-  // Draw all layers for current page
-  currentPageLayers.forEach((layer, index) => {
-    // Skip 3D layers as they are rendered separately
-    if (layer.properties.type === "model3d") return;
-    if (layer.action === "colorpalette") return; // Skip color palette layers
-    
-    if (layer.properties.imgUrl) {
-      // FIXED: Use the corrected getPreviewPosition function
-      const currentPosition = getPreviewPosition(layer, index);
+  // FIXED: In preview mode, draw destination images first, then origin images
+  if (previewMode) {
+    // First pass: Draw all destination images
+    currentPageLayers.forEach((layer, index) => {
+      if (layer.properties.type === "model3d" || layer.action === "colorpalette") return;
       
-      // FIXED: Use preview size if in preview mode and available
-      let currentSize = layer.properties.size;
-      if (previewMode && previewPositions[index] && previewPositions[index].size) {
-        currentSize = previewPositions[index].size;
+      // Only draw destination if it's a drag action and has destination position
+      if (layer.action === "drag" && layer.properties.positionDestination) {
+        drawDestinationImage(ctx, layer);
       }
+    });
+    
+    // Second pass: Draw all origin images (on top of destinations)
+    currentPageLayers.forEach((layer, index) => {
+      if (layer.properties.type === "model3d" || layer.action === "colorpalette") return;
       
-      const layerType = layer.properties.type || 
-                       (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
-      
-      if (layerType === "video") {
-        // Video handling
-        const video = document.createElement("video");
-        video.src = layer.properties.imgUrl;
-        video.onloadeddata = () => {
-          ctx.drawImage(
-            video,
-            currentPosition.x,
-            currentPosition.y,
-            parseInt(currentSize[0]),
-            parseInt(currentSize[1])
-          );
-          
-          // Show destination in both edit mode and preview mode
-          if (layer.action === "drag" && layer.properties.positionDestination) {
-            ctx.globalAlpha = 0.5;
-            ctx.drawImage(
-              video,
-              layer.properties.positionDestination.x,
-              layer.properties.positionDestination.y,
-              parseInt(layer.properties.size[0]),
-              parseInt(layer.properties.size[1])
-            );
-            ctx.globalAlpha = 1.0;
-          }
-          
-          // Draw resize handle
-          drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
-        };
-      } else {
-        // Image handling with cached images
-        let img;
-        if (imageCache.current[layer.properties.imgUrl]) {
-          img = imageCache.current[layer.properties.imgUrl];
-          drawImageWithHandles();
-        } else {
-          img = new Image();
-          img.src = layer.properties.imgUrl;
-          img.onload = () => {
-            imageCache.current[layer.properties.imgUrl] = img;
-            drawImageWithHandles();
-          };
+      if (layer.properties.imgUrl) {
+        const currentPosition = getPreviewPosition(layer, index);
+        let currentSize = layer.properties.size;
+        if (previewPositions[index] && previewPositions[index].size) {
+          currentSize = previewPositions[index].size;
         }
         
-        function drawImageWithHandles() {
-          ctx.save();
-          
-          // Handle rotation if needed
-          if (layer.action === "rotation" && layer.properties.rotationAngle) {
-            ctx.translate(
-              currentPosition.x + parseInt(currentSize[0]) / 2,
-              currentPosition.y + parseInt(currentSize[1]) / 2
+        const layerType = layer.properties.type || 
+                         (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
+        
+        if (layerType === "video") {
+          // Video handling
+          const video = document.createElement("video");
+          video.src = layer.properties.imgUrl;
+          video.onloadeddata = () => {
+            ctx.drawImage(
+              video,
+              currentPosition.x,
+              currentPosition.y,
+              parseInt(currentSize[0]),
+              parseInt(currentSize[1])
             );
-            ctx.rotate((layer.properties.rotationAngle * Math.PI) / 180);
-            ctx.translate(
-              -(currentPosition.x + parseInt(currentSize[0]) / 2),
-              -(currentPosition.y + parseInt(currentSize[1]) / 2)
-            );
+            
+            // Draw resize handle
+            drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
+          };
+        } else {
+          // Image handling
+          let img;
+          if (imageCache.current[layer.properties.imgUrl]) {
+            img = imageCache.current[layer.properties.imgUrl];
+            drawImageInPreview();
+          } else {
+            img = new Image();
+            img.src = layer.properties.imgUrl;
+            img.onload = () => {
+              imageCache.current[layer.properties.imgUrl] = img;
+              drawImageInPreview();
+            };
           }
           
-          // Draw the image at current position
-          ctx.drawImage(
-            img,
-            currentPosition.x,
-            currentPosition.y,
-            parseInt(currentSize[0]),
-            parseInt(currentSize[1])
-          );
-          
-          // Show destination in both edit mode and preview mode
-          if (layer.action === "drag" && layer.properties.positionDestination) {
-            ctx.globalAlpha = 0.5;
+          function drawImageInPreview() {
+            ctx.save();
+            
+            // Handle rotation if needed
+            if (layer.action === "rotation" && layer.properties.rotationAngle) {
+              ctx.translate(
+                currentPosition.x + parseInt(currentSize[0]) / 2,
+                currentPosition.y + parseInt(currentSize[1]) / 2
+              );
+              ctx.rotate((layer.properties.rotationAngle * Math.PI) / 180);
+              ctx.translate(
+                -(currentPosition.x + parseInt(currentSize[0]) / 2),
+                -(currentPosition.y + parseInt(currentSize[1]) / 2)
+              );
+            }
+            
+            // Draw the origin image (this will be on top)
             ctx.drawImage(
               img,
-              layer.properties.positionDestination.x,
-              layer.properties.positionDestination.y,
-              parseInt(layer.properties.size[0]),
-              parseInt(layer.properties.size[1])
+              currentPosition.x,
+              currentPosition.y,
+              parseInt(currentSize[0]),
+              parseInt(currentSize[1])
             );
-            ctx.globalAlpha = 1.0;
+            
+            // Draw resize handle
+            drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
+            ctx.restore();
           }
-          
-          // Draw resize handle
-          drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
-          
-          ctx.restore();
+        }
+
+        // Add audio indicator for preview mode
+        if (layer.action === "audio" && layer.properties.audioUrl) {
+          drawAudioIndicator(ctx, layer, currentPosition);
         }
       }
-
-      // Add audio indicator for audio layers in preview mode
-      if (previewMode && layer.action === "audio" && layer.properties.audioUrl) {
-        drawAudioIndicator(ctx, layer, currentPosition);
+    });
+  } else {
+    // EDIT MODE: Original drawing logic (destinations and origins together)
+    currentPageLayers.forEach((layer, index) => {
+      if (layer.properties.type === "model3d" || layer.action === "colorpalette") return;
+      
+      if (layer.properties.imgUrl) {
+        const currentPosition = getPreviewPosition(layer, index);
+        let currentSize = layer.properties.size;
+        if (previewPositions[index] && previewPositions[index].size) {
+          currentSize = previewPositions[index].size;
+        }
+        
+        const layerType = layer.properties.type || 
+                         (layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image");
+        
+        if (layerType === "video") {
+          // Video handling
+          const video = document.createElement("video");
+          video.src = layer.properties.imgUrl;
+          video.onloadeddata = () => {
+            ctx.drawImage(
+              video,
+              currentPosition.x,
+              currentPosition.y,
+              parseInt(currentSize[0]),
+              parseInt(currentSize[1])
+            );
+            
+            // Show destination in edit mode
+            if (layer.action === "drag" && layer.properties.positionDestination) {
+              drawDestinationImage(ctx, layer);
+            }
+            
+            drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
+          };
+        } else {
+          // Image handling
+          let img;
+          if (imageCache.current[layer.properties.imgUrl]) {
+            img = imageCache.current[layer.properties.imgUrl];
+            drawImageWithHandles();
+          } else {
+            img = new Image();
+            img.src = layer.properties.imgUrl;
+            img.onload = () => {
+              imageCache.current[layer.properties.imgUrl] = img;
+              drawImageWithHandles();
+            };
+          }
+          
+          function drawImageWithHandles() {
+            ctx.save();
+            
+            // Handle rotation if needed
+            if (layer.action === "rotation" && layer.properties.rotationAngle) {
+              ctx.translate(
+                currentPosition.x + parseInt(currentSize[0]) / 2,
+                currentPosition.y + parseInt(currentSize[1]) / 2
+              );
+              ctx.rotate((layer.properties.rotationAngle * Math.PI) / 180);
+              ctx.translate(
+                -(currentPosition.x + parseInt(currentSize[0]) / 2),
+                -(currentPosition.y + parseInt(currentSize[1]) / 2)
+              );
+            }
+            
+            // Draw the main image
+            ctx.drawImage(
+              img,
+              currentPosition.x,
+              currentPosition.y,
+              parseInt(currentSize[0]),
+              parseInt(currentSize[1])
+            );
+            
+            // Show destination in edit mode
+            if (layer.action === "drag" && layer.properties.positionDestination) {
+              drawDestinationImage(ctx, layer);
+            }
+            
+            drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
+            ctx.restore();
+          }
+        }
       }
+    });
+
+    // Draw selected asset if not part of a layer yet (edit mode only)
+    if (selectedAsset && !selectedLayer) {
+      // drawNewAsset(ctx);
     }
-  });
 
-  // Draw selected asset if not part of a layer yet (edit mode only)
-  if (!previewMode && selectedAsset && !selectedLayer) {
-    // drawNewAsset(ctx);
+    // Shadow position in edit mode only
+    if (selectedAction === "drag" && shadowPosition && selectedAsset) {
+      drawDestinationPreview(ctx);
+    }
   }
+};
 
-  // Shadow position in edit mode only
-  if (!previewMode && selectedAction === "drag" && shadowPosition && selectedAsset) {
+
+// 2. NEW: Function to draw destination image (replaces old shadow drawing)
+const drawDestinationImage = (ctx, layer) => {
+  if (!layer.properties.positionDestination) return;
+  
+  // Check if custom destination image is set
+  if (layer.properties.destinationImgUrl && layer.properties.destinationImgUrl !== "") {
+    // Draw custom destination image
+    let destImg;
+    if (imageCache.current[layer.properties.destinationImgUrl]) {
+      destImg = imageCache.current[layer.properties.destinationImgUrl];
+      drawDestination();
+    } else {
+      destImg = new Image();
+      destImg.src = layer.properties.destinationImgUrl;
+      destImg.onload = () => {
+        imageCache.current[layer.properties.destinationImgUrl] = destImg;
+        drawDestination();
+      };
+    }
+    
+    function drawDestination() {
+      ctx.save();
+      ctx.globalAlpha = 1,0; // Slightly transparent to show it's a destination
+      ctx.drawImage(
+        destImg,
+        layer.properties.positionDestination.x,
+        layer.properties.positionDestination.y,
+        parseInt(layer.properties.size[0]),
+        parseInt(layer.properties.size[1])
+      );
+      
+      ctx.restore();
+    }
+  } else {
+    // Fall back to original shadow behavior
+    if (imageCache.current[layer.properties.imgUrl]) {
+      const img = imageCache.current[layer.properties.imgUrl];
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(
+        img,
+        layer.properties.positionDestination.x,
+        layer.properties.positionDestination.y,
+        parseInt(layer.properties.size[0]),
+        parseInt(layer.properties.size[1])
+      );
+      ctx.restore();
+    }
+  }
+};
+
+// 3. NEW: Function for destination preview in edit mode
+const drawDestinationPreview = (ctx) => {
+  if (!selectedAsset || !shadowPosition) return;
+  
+  // Check if custom destination image is set
+  const destinationUrl = layerProperties.destinationImgUrl;
+  
+  if (destinationUrl && destinationUrl !== "") {
+    // Draw custom destination image
+    let destImg;
+    if (imageCache.current[destinationUrl]) {
+      destImg = imageCache.current[destinationUrl];
+      drawPreview();
+    } else {
+      destImg = new Image();
+      destImg.src = destinationUrl;
+      destImg.onload = () => {
+        imageCache.current[destinationUrl] = destImg;
+        drawPreview();
+      };
+    }
+    
+    function drawPreview() {
+      ctx.save();
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(
+        destImg,
+        shadowPosition.x,
+        shadowPosition.y,
+        assetSize.width,
+        assetSize.height
+      );
+    
+      ctx.restore();
+    }
+  } else {
+    // Fall back to original shadow
     drawShadowAsset(ctx);
   }
 };
@@ -1903,7 +2173,14 @@ const drawAudioIndicator = (ctx, layer, position) => {
       !shadowPosition &&
       !previewMode
     ) {
+       // FIXED: Don't override existing destination position when layer is selected
+    if (selectedLayer && selectedLayer.properties.positionDestination) {
+      // Use the layer's existing destination position
+      setShadowPosition(selectedLayer.properties.positionDestination);
+    } else {
+      // Only set default position for new layers
       setShadowPosition({ x: assetPosition.x + 50, y: assetPosition.y + 50 });
+    }
     } else if (selectedAction !== "drag") {
       setShadowPosition(null);
     }
@@ -1912,6 +2189,7 @@ const drawAudioIndicator = (ctx, layer, position) => {
   // Preload images when layers or selected asset changes
   useEffect(() => {
     preloadImages();
+    preloadDestinationImages();
   }, [layers, selectedAsset]);
 
   // Redraw canvas when dependencies change
@@ -2168,10 +2446,16 @@ const drawAudioIndicator = (ctx, layer, position) => {
         height: parseInt(clickedLayer.properties.size[1]),
       });
       
+       // FIXED: Preserve the original destination position from the layer
+  if (clickedLayer.action === "drag" && clickedLayer.properties.positionDestination) {
+    setShadowPosition(clickedLayer.properties.positionDestination);
+  }
+
       // Set layer properties
       setLayerProperties({
         ...clickedLayer.properties,
         rotationAngle: clickedLayer.properties.rotationAngle || 0,
+        destinationImgUrl: clickedLayer.properties.destinationImgUrl || "",
       });
       
       // Start dragging the layer

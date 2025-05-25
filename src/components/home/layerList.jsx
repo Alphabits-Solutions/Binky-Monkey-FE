@@ -377,6 +377,12 @@ const handleSelectLayer = useCallback(
     }
     
     setAssetPosition(layer.properties.positionOrigin);
+
+    // FIXED: Preserve the original destination position from the layer
+    if (layer.action === "drag" && layer.properties.positionDestination) {
+      setShadowPosition(layer.properties.positionDestination);
+    }
+    
     setAssetSize({
       width: parseInt(layer.properties.size[0]),
       height: parseInt(layer.properties.size[1]),
@@ -384,6 +390,7 @@ const handleSelectLayer = useCallback(
     setLayerProperties({
       ...layer.properties,
       rotationAngle: layer.properties.rotationAngle || 0,
+      destinationImgUrl: layer.properties.destinationImgUrl || "",
     });
   },
   [setSelectedLayer, setSelectedAsset, setSelectedAction, setAssetPosition, setAssetSize, setLayerProperties]

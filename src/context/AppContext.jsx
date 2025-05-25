@@ -27,6 +27,7 @@ export const AppProvider = ({ children }) => {
     imgUrl: "",
     audioUrl: "",
     rotationAngle: 0,
+    destinationImgUrl: "", // Added for custom destination images
   });
   const [slides, setSlides] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(-1);
@@ -48,6 +49,10 @@ export const AppProvider = ({ children }) => {
   const [modelScale, setModelScale] = useState(1.0);
   const [modelViewers, setModelViewers] = useState({});
   const [canvas3DObjects, setCanvas3DObjects] = useState([]);
+  
+  // Destination image states
+  const [destinationImage, setDestinationImage] = useState(null);
+  const [showDestinationSelector, setShowDestinationSelector] = useState(false);
   
   // Refs
   const canvasRef = useRef(null);
@@ -91,14 +96,13 @@ export const AppProvider = ({ children }) => {
     }
   }, [selectedActivity, selectedSlideId]);
   
-
   const loadLayers = useCallback(async (pageId) => {
     if (!pageId) {
       console.log("No pageId, clearing layers");
       setLayers([]);
-      setCanvasShapes([]); // Also clear canvas shapes
-      setCanvas3DObjects([]); // Clear 3D objects
-      setSelectedColors([]); // Clear colors
+      setCanvasShapes([]);
+      setCanvas3DObjects([]);
+      setSelectedColors([]);
       return;
     }
     try {
@@ -144,7 +148,8 @@ export const AppProvider = ({ children }) => {
               modelUrl: layer.properties.modelUrl || layer.properties.imgUrl, // Ensure modelUrl is set
               rotation: layer.properties.rotation || { x: 0, y: 0, z: 0 },
               scale: layer.properties.scale || 1.0,
-              type: "model3d"
+              type: "model3d",
+              destinationImgUrl: layer.properties.destinationImgUrl || "", // Include destination image
             }
           };
         }
@@ -169,7 +174,8 @@ export const AppProvider = ({ children }) => {
             shapeId: shapeId,
             properties: {
               ...layer.properties,
-              type: "svg"
+              type: "svg",
+              destinationImgUrl: layer.properties.destinationImgUrl || "", // Include destination image
             }
           };
         }
@@ -181,11 +187,12 @@ export const AppProvider = ({ children }) => {
           properties: {
             ...layer.properties,
             type: layer.properties.type || (layer.properties.imgUrl && layer.properties.imgUrl.match(/\.(mp4|webm|ogg)$/i) ? "video" : "image"),
+            destinationImgUrl: layer.properties.destinationImgUrl || "", // Include destination image for all layers
           },
         };
       });
       
-     // FIXED: Set combined colors from all shape layers
+     // Set combined colors from all shape layers
     console.log("Setting combined colors from shape layers:", allColors);
     setSelectedColors(allColors);
 
@@ -195,13 +202,12 @@ export const AppProvider = ({ children }) => {
       setLayers(apiLayers);
       
       console.log("Processed layers:", apiLayers);
-      setLayers(apiLayers);
     } catch (error) {
       console.error("Failed to load layers:", error);
       setLayers([]);
       setSelectedColors([]);
     }
-  }, [setLayers, setCanvasShapes, setCanvas3DObjects,setSelectedColors]);
+  }, [setLayers, setCanvasShapes, setCanvas3DObjects, setSelectedColors]);
 
   const switchPage = useCallback((direction) => {
     let newIndex;
@@ -299,6 +305,12 @@ export const AppProvider = ({ children }) => {
         canvas3DObjects,
         setCanvas3DObjects,
         
+        // Destination image values
+        destinationImage,
+        setDestinationImage,
+        showDestinationSelector,
+        setShowDestinationSelector,
+        
         // Refs
         canvasRef,
         draggedShapeRef,
@@ -311,7 +323,7 @@ export const AppProvider = ({ children }) => {
         movingShapeId,
         setMovingShapeId,
         moving3DObjectId,
-        setMoving3DObjectId
+        setMoving3DObjectId,
       }}
     >
       {children}
