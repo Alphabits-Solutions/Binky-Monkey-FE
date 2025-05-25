@@ -927,3 +927,156 @@
 .audio-enabled {
   cursor: pointer !important;
 }
+
+// Navigation Button Styles
+.canvas-navigation {
+  .nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important;
+    background-color: #861E00 !important;
+    border-color: #861E00 !important;
+    color: white !important;
+    box-shadow: 0 4px 12px #861E00 !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    &:hover:not(:disabled) {
+      background-color: #861E00!important;
+      border-color: #861E00 !important;
+      transform: translateY(-50%) scale(1.1) !important;
+      box-shadow: 0 6px 16px #861E00 !important;
+    }
+    
+    &:active:not(:disabled) {
+      background-color: #861E00 !important;
+      border-color: #861E00 !important;
+      transform: translateY(-50%) scale(1.05) !important;
+    }
+    
+    &:disabled {
+      background-color: #d9d9d9 !important;
+      border-color: #d9d9d9 !important;
+      color: #ffffff !important;
+      cursor: not-allowed !important;
+      transform: translateY(-50%) !important;
+      box-shadow: 0 2px 6px #9b9b9b !important;
+    }
+    
+    &.prev-button {
+      left: -60px;
+    }
+    
+    &.next-button {
+      right: -60px;
+    }
+    
+    .anticon {
+      font-size: 18px !important;
+      line-height: 1 !important;
+    }
+  }
+  
+  .page-indicator {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 18px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 1000;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 6px solid rgba(0, 0, 0, 0.7);
+    }
+  }
+}
+
+// Canvas container adjustments for better navigation visibility
+.canvas-container {
+  position: relative;
+  
+  &.preview-mode {
+    // Add some padding when in preview mode to accommodate navigation buttons
+    margin: 0 80px;
+    
+    @media (max-width: 1200px) {
+      margin: 0 40px;
+      
+      .nav-button {
+        &.prev-button {
+          left: -50px;
+        }
+        
+        &.next-button {
+          right: -50px;
+        }
+      }
+    }
+    
+    @media (max-width: 768px) {
+      margin: 0 20px;
+      
+      .nav-button {
+        width: 40px !important;
+        height: 40px !important;
+        
+        &.prev-button {
+          left: -30px;
+        }
+        
+        &.next-button {
+          right: -30px;
+        }
+        
+        .anticon {
+          font-size: 14px !important;
+        }
+      }
+      
+      .page-indicator {
+        bottom: -30px;
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+    }
+  }
+}
+
+// Animation for smooth page transitions
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.canvas-transition {
+  animation: pageSlideIn 0.3s ease-out;
+}

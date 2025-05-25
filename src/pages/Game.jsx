@@ -1094,20 +1094,40 @@ useEffect(() => {
   }
 }, [previewMode, previewPositions]);
 
+// 3. Add a new useEffect to reinitialize preview positions when page changes
+useEffect(() => {
+  if (previewMode && selectedPage) {
+    // FIXED: Reinitialize preview positions when page changes in preview mode
+    const currentPageLayers = layers.filter(layer => layer.pageId === selectedPage);
+    const initialPositions = currentPageLayers.map((layer, index) => ({
+      index: index,
+      position: { ...layer.properties.positionOrigin },
+      size: [...layer.properties.size]
+    }));
+    setPreviewPositions(initialPositions);
+    console.log("Reinitialized preview positions for new page:", selectedPage, initialPositions);
+  }
+}, [selectedPage, previewMode]); // Trigger when page changes in preview mode
+
+
   // Toggle preview mode - Clear fills when exiting preview mode
+// 1. Update the togglePreviewMode function
 const togglePreviewMode = () => {
   const newPreviewMode = !previewMode;
   setPreviewMode(newPreviewMode);
   
   if (newPreviewMode) {
-    // Initialize preview positions when entering preview mode
-    const initialPositions = layers.map((layer, index) => ({
+    // FIXED: Initialize preview positions for ALL layers of current page when entering preview mode
+    const currentPageLayers = layers.filter(layer => layer.pageId === selectedPage);
+    const initialPositions = currentPageLayers.map((layer, index) => ({
       index: index,
       position: { ...layer.properties.positionOrigin },
+      size: [...layer.properties.size] // Also track size for resize actions
     }));
     setPreviewPositions(initialPositions);
+    console.log("Initialized preview positions:", initialPositions);
   } else {
-    // ADDED: Clear all fill colors when exiting preview mode
+    // Clear all fill colors when exiting preview mode
     setCanvasShapes(prevShapes => 
       prevShapes.map(shape => ({
         ...shape, 
@@ -1121,17 +1141,36 @@ const togglePreviewMode = () => {
       audioRef.current.currentTime = 0;
       setPlayingAudioLayerId(null);
     }
+    
+    // FIXED: Clear preview positions when exiting
+    setPreviewPositions([]);
   }
 };
-
   // Handle navigation to previous page
   const handlePreviousPage = () => {
+    console.log("Switching to previous page");
     switchPage("prev");
+    
+    // FIXED: Clear any temporary preview states when switching pages
+    if (previewMode) {
+      // Reset any dragging states
+      setIsDragging(false);
+      setDraggingAsset(null);
+      setVibratingLayer(null);
+    }
   };
 
-  // Handle navigation to next page
   const handleNextPage = () => {
+    console.log("Switching to next page");
     switchPage("next");
+    
+    // FIXED: Clear any temporary preview states when switching pages
+    if (previewMode) {
+      // Reset any dragging states
+      setIsDragging(false);
+      setDraggingAsset(null);
+      setVibratingLayer(null);
+    }
   };
 
   // Apply vibration effect
@@ -1182,13 +1221,23 @@ const togglePreviewMode = () => {
   };
 
   // Get current position for a layer in preview mode
-  const getPreviewPosition = (layer, index) => {
-    if (previewMode && previewPositions[index]) {
-      return previewPositions[index].position;
-    }
+  // 2. Update the getPreviewPosition function to handle page changes better
+const getPreviewPosition = (layer, layerIndex) => {
+  if (!previewMode) {
     return layer.properties.positionOrigin;
-  };
-
+  }
+  
+  // FIXED: Find preview position by layer ID instead of array index
+  const currentPageLayers = layers.filter(l => l.pageId === selectedPage);
+  const currentLayerIndex = currentPageLayers.findIndex(l => l._id === layer._id);
+  
+  if (currentLayerIndex >= 0 && previewPositions[currentLayerIndex]) {
+    return previewPositions[currentLayerIndex].position;
+  }
+  
+  // Fallback to original position if not found in preview positions
+  return layer.properties.positionOrigin;
+};
 
   // Handle canvas drop for shapes, images, and 3D models
   const handleCanvasDrop = async (e) => {
@@ -1591,24 +1640,26 @@ const togglePreviewMode = () => {
 
   // Draw all layers on canvas
 // Update the drawLayers function to always show resize handles in non-preview mode
+// 5. Update the drawLayers function to better handle preview positions
 const drawLayers = (ctx) => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  // Draw all layers
-  layers.forEach((layer, index) => {
-    // Skip layers that aren't for this page
-    if (layer.pageId !== selectedPage) return;
-    
+  // Get current page layers only
+  const currentPageLayers = layers.filter(layer => layer.pageId === selectedPage);
+
+  // Draw all layers for current page
+  currentPageLayers.forEach((layer, index) => {
     // Skip 3D layers as they are rendered separately
     if (layer.properties.type === "model3d") return;
     if (layer.action === "colorpalette") return; // Skip color palette layers
     
     if (layer.properties.imgUrl) {
-      // Determine current position based on mode
+      // FIXED: Use the corrected getPreviewPosition function
       const currentPosition = getPreviewPosition(layer, index);
-       // FIXED: Use preview size if in preview mode and available
-       let currentSize = layer.properties.size;
-       if (previewPositions[index] && previewPositions[index].size) {
+      
+      // FIXED: Use preview size if in preview mode and available
+      let currentSize = layer.properties.size;
+      if (previewMode && previewPositions[index] && previewPositions[index].size) {
         currentSize = previewPositions[index].size;
       }
       
@@ -1624,10 +1675,8 @@ const drawLayers = (ctx) => {
             video,
             currentPosition.x,
             currentPosition.y,
-            // parseInt(layer.properties.size[0]),
-            // parseInt(layer.properties.size[1])
-            parseInt(currentSize[0]), // Use currentSize
-            parseInt(currentSize[1])  // Use currentSize
+            parseInt(currentSize[0]),
+            parseInt(currentSize[1])
           );
           
           // Show destination in both edit mode and preview mode
@@ -1643,7 +1692,7 @@ const drawLayers = (ctx) => {
             ctx.globalAlpha = 1.0;
           }
           
-          // Draw resize handle in edit mode
+          // Draw resize handle
           drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
         };
       } else {
@@ -1667,13 +1716,13 @@ const drawLayers = (ctx) => {
           // Handle rotation if needed
           if (layer.action === "rotation" && layer.properties.rotationAngle) {
             ctx.translate(
-              currentPosition.x + parseInt(layer.properties.size[0]) / 2,
-              currentPosition.y + parseInt(layer.properties.size[1]) / 2
+              currentPosition.x + parseInt(currentSize[0]) / 2,
+              currentPosition.y + parseInt(currentSize[1]) / 2
             );
             ctx.rotate((layer.properties.rotationAngle * Math.PI) / 180);
             ctx.translate(
-              -(currentPosition.x + parseInt(layer.properties.size[0]) / 2),
-              -(currentPosition.y + parseInt(layer.properties.size[1]) / 2)
+              -(currentPosition.x + parseInt(currentSize[0]) / 2),
+              -(currentPosition.y + parseInt(currentSize[1]) / 2)
             );
           }
           
@@ -1682,13 +1731,11 @@ const drawLayers = (ctx) => {
             img,
             currentPosition.x,
             currentPosition.y,
-            // parseInt(layer.properties.size[0]),
-            // parseInt(layer.properties.size[1])
-            parseInt(currentSize[0]), // Use currentSize
-            parseInt(currentSize[1])  // Use currentSize
+            parseInt(currentSize[0]),
+            parseInt(currentSize[1])
           );
           
-          // Show destination in both edit mode and preview mode with same appearance
+          // Show destination in both edit mode and preview mode
           if (layer.action === "drag" && layer.properties.positionDestination) {
             ctx.globalAlpha = 0.5;
             ctx.drawImage(
@@ -1701,44 +1748,21 @@ const drawLayers = (ctx) => {
             ctx.globalAlpha = 1.0;
           }
           
-          // Draw resize handle in edit mode
+          // Draw resize handle
           drawResizeHandleForLayer(ctx, layer, currentPosition, currentSize);
-
-          // Draw resize handle if not in preview mode or if the action is "resize"
-    // if (!previewMode || layer.action === "resize") {
-    //   const handleSize = 8;
-    //   const handleX = currentPosition.x + parseInt(layer.properties.size[0]);
-    //   const handleY = currentPosition.y + parseInt(layer.properties.size[1]);
-      
-    //   // Draw the handle
-    //   ctx.fillStyle = (selectedLayer && selectedLayer._id === layer._id) 
-    //     ? '#ff4d4f'  // Red for selected layer
-    //     : '#1890ff'; // Blue for other layers
-      
-    //   ctx.beginPath();
-    //   ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
-    //   ctx.fill();
-      
-    //   // Add a white border
-    //   ctx.strokeStyle = 'white';
-    //   ctx.lineWidth = 1;
-    //   ctx.beginPath();
-    //   ctx.arc(handleX, handleY, handleSize/2, 0, Math.PI * 2);
-    //   ctx.stroke();
-    // }
           
           ctx.restore();
         }
       }
 
-      // Add a special style for images with audio in preview mode
+      // Add audio indicator for audio layers in preview mode
       if (previewMode && layer.action === "audio" && layer.properties.audioUrl) {
         drawAudioIndicator(ctx, layer, currentPosition);
       }
     }
   });
 
-  // Draw selected asset if not part of a layer yet
+  // Draw selected asset if not part of a layer yet (edit mode only)
   if (!previewMode && selectedAsset && !selectedLayer) {
     // drawNewAsset(ctx);
   }
@@ -2382,10 +2406,11 @@ const drawAudioIndicator = (ctx, layer, position) => {
       )}
       <div style={{ 
         flex: 1, 
-        padding: "20px", 
+        padding: previewMode ? "20px 100px" : "20px", // Add more horizontal padding in preview mode
         display: "flex", 
         flexDirection: "column", 
-        alignItems: "center" 
+        alignItems: "center",
+        minWidth: previewMode ? "1000px" : "auto" // Ensure minimum width in preview mode
       }}>
         <div style={{
           display: "inline-flex", 
@@ -2419,52 +2444,149 @@ const drawAudioIndicator = (ctx, layer, position) => {
     position: "relative", 
     width: "800px", 
     height: "600px", 
-    overflow: canvasZoom === 100 ? "hidden": "auto",
-    border: "1px solid #ccc"
+    overflow: canvasZoom === 100 ? (previewMode ? "visible" : "hidden") : "auto", // Show overflow in preview mode
+    border: "1px solid #ccc",
+    margin: "0 auto" // Center the canvas
   }}>
-          {previewMode && slides.length > 1 && (
-            <>
-              <Button
-                shape="circle"
-                icon={<LeftOutlined />}
-                onClick={handlePreviousPage}
-                disabled={currentPageIndex === 0}
-                style={{
-                  position: "absolute",
-                  left: "-50px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  backgroundColor: "#8B4513",
-                  borderColor: "#8B4513",
-                  color: "#fff",
-                  zIndex: 10,
-                }}
-              />
-              <Button
-                shape="circle"
-                icon={<RightOutlined />}
-                onClick={handleNextPage}
-                disabled={currentPageIndex === slides.length - 1}
-                style={{
-                  position: "absolute",
-                  right: "-50px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  backgroundColor: "#8B4513",
-                  borderColor: "#8B4513",
-                  color: "#fff",
-                  zIndex: 10,
-                }}
-              />
-            </>
-          )}
-           <div style={{
-      transform: `scale(${canvasZoom / 100})`,
-      transformOrigin: "top left",
-      width: 800 * (100 / canvasZoom), // Adjust width to maintain visual size
-      height: 600 * (100 / canvasZoom), // Adjust height to maintain visual size
-      position: "relative"
-    }}>
+         {previewMode && slides.length > 1 && (
+    <div className="canvas-navigation">
+      {/* Previous Button */}
+      <Button
+        shape="circle"
+        icon={<LeftOutlined />}
+        onClick={handlePreviousPage}
+        disabled={currentPageIndex === 0}
+        size="large"
+        className="nav-button prev-button"
+        title={`Go to page ${currentPageIndex}`}
+        style={{
+          position: "absolute",
+          left: "-70px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          backgroundColor: currentPageIndex === 0 ? "#d9d9d9" : "#1890ff",
+          borderColor: currentPageIndex === 0 ? "#d9d9d9" : "#1890ff",
+          color: "#fff",
+          zIndex: 1001,
+          width: "48px",
+          height: "48px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: currentPageIndex === 0 
+            ? "0 2px 6px rgba(0, 0, 0, 0.1)" 
+            : "0 4px 12px rgba(24, 144, 255, 0.3)",
+          transition: "all 0.3s ease",
+          cursor: currentPageIndex === 0 ? "not-allowed" : "pointer",
+        }}
+      />
+      
+      {/* Next Button */}
+      <Button
+        shape="circle"
+        icon={<RightOutlined />}
+        onClick={handleNextPage}
+        disabled={currentPageIndex === slides.length - 1}
+        size="large"
+        className="nav-button next-button"
+        title={`Go to page ${currentPageIndex + 2}`}
+        style={{
+          position: "absolute",
+          right: "-60px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          backgroundColor: currentPageIndex === slides.length - 1 ? "#d9d9d9" : "#1890ff",
+          borderColor: currentPageIndex === slides.length - 1 ? "#d9d9d9" : "#1890ff",
+          color: "#fff",
+          zIndex: 1000,
+          width: "48px",
+          height: "48px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: currentPageIndex === slides.length - 1 
+            ? "0 2px 6px rgba(0, 0, 0, 0.1)" 
+            : "0 4px 12px rgba(24, 144, 255, 0.3)",
+          transition: "all 0.3s ease",
+          cursor: currentPageIndex === slides.length - 1 ? "not-allowed" : "pointer",
+        }}
+      />
+      
+      {/* Page Indicator */}
+      {/* <div
+        className="page-indicator"
+        style={{
+          position: "absolute",
+          bottom: "-50px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          color: "white",
+          padding: "6px 14px",
+          borderRadius: "18px",
+          fontSize: "12px",
+          fontWeight: "500",
+          zIndex: 1001,
+          whiteSpace: "nowrap",
+          backdropFilter: "blur(4px)",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+        }}
+      >
+        <span style={{ opacity: 0.8 }}>Page</span>{" "}
+        <span style={{ fontWeight: "bold", color: "#1890ff" }}>
+          {currentPageIndex + 1}
+        </span>{" "}
+        <span style={{ opacity: 0.8 }}>of {slides.length}</span>
+      </div> */}
+      
+      {/* Page Navigation Dots (optional - for better UX) */}
+      {/* {slides.length <= 10 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "-30px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: "6px",
+            zIndex: 1000,
+          }}
+        >
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                setCurrentPageIndex(index);
+                const slide = slides[index];
+                setSelectedPage(slide._id);
+                setSelectedSlideId(slide._id);
+                setPageName(slide.title);
+              }}
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                border: "none",
+                backgroundColor: index === currentPageIndex ? "#1890ff" : "rgba(0, 0, 0, 0.3)",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                transform: index === currentPageIndex ? "scale(1.2)" : "scale(1)",
+              }}
+              title={`Go to ${slides[index].title}`}
+            />
+          ))}
+        </div>
+      )} */}
+    </div>
+  )}
+          <div style={{
+    transform: `scale(${canvasZoom / 100})`,
+    transformOrigin: "top left",
+    width: 800 * (100 / canvasZoom),
+    height: 600 * (100 / canvasZoom),
+    position: "relative",
+    transition: "transform 0.2s ease", // Smooth zoom transitions
+  }}>
           <canvas
             ref={canvasRef}
             id="asset-canvas"
