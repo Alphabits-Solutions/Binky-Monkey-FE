@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Form, Select, message } from "antd";
 import { getAllActivities, createMeeting } from "../services/api";
 import { useNavigate } from 'react-router-dom';
+import Input from "antd/es/input/Input";
 
 const MeetingPage = () => {
   const [activities, setActivities] = useState([]);
@@ -29,8 +30,10 @@ const MeetingPage = () => {
 
   const handleCreateMeeting = async (values) => {
     try {
-      const response = await createMeeting({ activityId: values.activityId });
-      window.alert(`🎉🎉 Meeting created successfully for \n Acitvity Name :${response.activityTitle}\n with Meeting ID: ${response.meetingId}`);
+      const response = await createMeeting({meetingId: values.meetingId,
+        activityId: values.activityId,
+        flag: values.flag, });
+      window.alert(`🎉🎉 Meeting created successfully for \n Activity Name :${response.activityTitle}\n with Meeting ID: ${response.meetingId}`);
       form.resetFields();
       navigate("/"); 
     } catch (error) {
@@ -52,6 +55,17 @@ const MeetingPage = () => {
         onFinish={handleCreateMeeting}
         initialValues={{ activityId: null }}
       >
+          <Form.Item
+          name="meetingId"
+          label="Meeting ID"
+          rules={[
+            { required: true, message: "Please enter a meeting ID!" },
+            { pattern: /^bm/, message: "Meeting ID must start with 'bm'" },
+            { max: 20, message: "Meeting ID cannot exceed 20 characters" },
+          ]}
+        >
+          <Input placeholder="Enter meeting ID (e.g., bm123456)" />
+        </Form.Item>
         <Form.Item
           name="activityId"
           label="Select Activity"
@@ -63,6 +77,16 @@ const MeetingPage = () => {
                 {activity.title}
               </Select.Option>
             ))}
+          </Select>
+        </Form.Item>
+         <Form.Item
+          name="flag"
+          label="Status"
+          rules={[{ required: true, message: "Please select a status!" }]}
+        >
+          <Select placeholder="Select status">
+            <Select.Option value="active">Active</Select.Option>
+            <Select.Option value="inactive">Inactive</Select.Option>
           </Select>
         </Form.Item>
         <Form.Item>
