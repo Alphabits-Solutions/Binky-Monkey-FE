@@ -1,5 +1,14 @@
 import { useContext, useEffect, useState } from "react";
-import { Button, Card, Dropdown, Form, Input, message, Modal, Select } from "antd";
+import {
+  Button,
+  Card,
+  Dropdown,
+  Form,
+  Input,
+  message,
+  Modal,
+  Select,
+} from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
@@ -9,7 +18,7 @@ import {
   deleteActivity,
   getAllActivities,
   updateActivity,
-  toggleActivityStatus,
+  toggleActivityStatus
 } from "../services/api";
 
 const ActivitySection = () => {
@@ -99,7 +108,7 @@ const ActivitySection = () => {
       message.error("Failed to toggle activity status.");
     }
   };
-
+ 
   const handleAssign = (activityId) => {
     setIsAssignModalOpen(true);
   };
@@ -131,7 +140,7 @@ const ActivitySection = () => {
         open={isAssignModal}
         onCancel={() => {
           setIsAssignModalOpen(false);
-        }} 
+        }}
         footer={null}
       >
         <Form layout="vertical" name="instructorForm">
@@ -336,6 +345,14 @@ const ActivitySection = () => {
                 <p style={{ marginTop: "15px", paddingRight: "25px" }}>
                   {activity.title}
                 </p>
+                {/* <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMeetingClick(activity._id, activity.title);
+                  }}
+                >
+                  Create Meeting
+                </Button> */}
               </Card>
             );
           })

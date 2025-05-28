@@ -52,6 +52,19 @@ export const loginUser = async (credentials) => {
       throw error.response?.data || error.message;
     }
   };
+//meeting
+
+export const createMeetingForActivity = async (activityId, title) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/meeting/create-meeting`, {
+      activityId,
+      title,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to create meeting');
+  }
+};
 
 
 export const createActivity = async (activityData) => {
@@ -124,6 +137,10 @@ export const toggleActivityStatus = async (activityId, currentStatus) => {
   }
 };
 
+export const createMeeting = async (meetingData) => {
+  const response = await axios.post(`${API_BASE_URL}/meeting/create-meeting`, meetingData);
+  return response.data;
+};
 export const createPage = async ( data) => {
   try {
     const response = await api.post(`/page`, data);

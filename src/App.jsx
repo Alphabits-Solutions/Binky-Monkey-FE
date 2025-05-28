@@ -12,6 +12,9 @@ import Game from "./pages/Game";
 import "./assets/sass/homescreen.scss";
 import MemberAuth from "./pages/MemberAuth";
 
+
+import MeetingPage from "./pages/MeetingPage";
+
 const {  Content } = Layout;
 
 const App = () => {
@@ -25,7 +28,9 @@ const App = () => {
   >
       <Router>
         <Routes>
+       
           <Route path="/memberauth" element={<MemberAuth />} />
+          <Route path="/meeting" element={<MeetingPage />} />
           <Route path="/auth" element={<Auth />} />
           <Route
             path="*"
