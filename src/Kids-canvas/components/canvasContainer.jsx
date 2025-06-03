@@ -364,7 +364,7 @@ const CanvasContainer = ({
     }, 3000);
   };
 
-  // Canvas interaction handlers
+  // Canvas interaction handlers - MODERATOR BYPASS
   const handleCanvasInteraction = (type, data) => {
     // Vibration is always allowed
     if (type === 'vibration') {
@@ -379,8 +379,8 @@ const CanvasContainer = ({
       return;
     }
   
-    // Check if interaction is allowed
-    if (!interactionStates[type]) {
+    // MODERATOR BYPASS - Check if interaction is allowed (bypass for moderators)
+    if (!interactionStates[type] && !isModerator) {
       showMessage(`${type} interaction is currently disabled`);
       return;
     }

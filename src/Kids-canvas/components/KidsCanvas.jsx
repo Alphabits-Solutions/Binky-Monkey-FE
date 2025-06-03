@@ -431,9 +431,9 @@ const KidsCanvas = forwardRef(({
     const x = (e.clientX - rect.left) + scrollLeft;
     const y = (e.clientY - rect.top) + scrollTop;
 
-    // Check for resize handles first
+    // Check for resize handles first - MODERATOR BYPASS
     for (const layer of layers) {
-      if (layer.action === "resize" && interactionStates.resize) {
+      if (layer.action === "resize" && (interactionStates.resize || isModerator)) {
         if (isLayerLockedByOther(layer._id)) {
           continue;
         }
@@ -479,8 +479,8 @@ const KidsCanvas = forwardRef(({
       }
     }
 
-    // Check for draggable layers
-    if (interactionStates.drag) {
+    // Check for draggable layers - MODERATOR BYPASS
+    if (interactionStates.drag || isModerator) {
       for (const layer of layers) {
         if (layer.action === "drag") {
           if (isLayerLockedByOther(layer._id)) {
@@ -590,9 +590,9 @@ const KidsCanvas = forwardRef(({
     }
   };
 
-  // Handle audio playback
+  // Handle audio playback - MODERATOR BYPASS
   const handleAudioClick = (layer) => {
-    if (!interactionStates.audio) {
+    if (!interactionStates.audio && !isModerator) {
       return;
     }
 
@@ -631,9 +631,13 @@ const KidsCanvas = forwardRef(({
     }
   };
 
-  // Handle shape color filling
+  // Handle shape color filling - MODERATOR BYPASS
   const handleShapeClick = (e, shapeId) => {
-    if (!interactionStates.colorfill || !activeColor) {
+    if (!interactionStates.colorfill && !isModerator) {
+      return;
+    }
+    
+    if (!activeColor) {
       return;
     }
 
@@ -662,9 +666,9 @@ const KidsCanvas = forwardRef(({
     });
   };
 
-  // Handle 3D model rotation
+  // Handle 3D model rotation - MODERATOR BYPASS
   const handle3DMouseDown = async (e, objectId) => {
-    if (!interactionStates.model3d) {
+    if (!interactionStates.model3d && !isModerator) {
       return;
     }
 
@@ -838,179 +842,179 @@ const KidsCanvas = forwardRef(({
           }}
         >
           <canvas
-            ref={canvasRef}
-            width={800}
-            height={600}
-            className="main-canvas"
-            style={{
-              width: `${800 * (zoomLevel / 100)}px`,
-              height: `${600 * (zoomLevel / 100)}px`,
-              display: 'block'
-            }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          />
+          ref={canvasRef}
+          width={800}
+          height={600}
+          className="main-canvas"
+          style={{
+            width: `${800 * (zoomLevel / 100)}px`,
+            height: `${600 * (zoomLevel / 100)}px`,
+            display: 'block'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        />
 
-          <div className="models-overlay" style={{ pointerEvents: 'none' }}>
-            {layers
-              .filter(layer => 
-                layer.action === "model3d" && 
-                layer.properties.modelUrl &&
-                layer.pageId === currentPage._id
-              )
-              .map((layer) => {
-                const objectId = layer.objectId || `3d-${layer._id}`;
-                const effectiveState = getEffectiveLayerState(layer);
-                const position = effectiveState.positionOrigin;
-                const size = effectiveState.size;
-                const scale = zoomLevel / 100;
-                const isLocked = isLayerLockedByOther(layer._id);
-                const isMyLock = myLocks.has(layer._id);
-                
-                return (
-                  <div
-                    key={objectId}
-                    className="model-container"
-                    style={{
-                      position: 'absolute',
-                      left: `${position.x * scale}px`,
-                      top: `${position.y * scale}px`,
-                      width: `${parseInt(size[0]) * scale}px`,
-                      height: `${parseInt(size[1]) * scale}px`,
-                      cursor: (interactionStates.model3d && !isLocked) ? 'grab' : 'default',
-                      pointerEvents: (interactionStates.model3d && !isLocked) ? 'all' : 'none',
-                      border: isLocked ? '3px solid #ff4757' : (isMyLock ? '3px solid #2ed573' : 'none'),
-                      borderRadius: '4px'
-                    }}
-                    ref={el => {
-                      if (el) modelContainersRef.current[objectId] = el;
-                    }}
-                    onMouseDown={(e) => handle3DMouseDown(e, objectId)}
-                  />
-                );
-              })}
-          </div>
-
-          <div className="shapes-overlay" style={{ pointerEvents: 'none' }}>
-            {canvasShapes
-              .filter(shape => {
-                const layerExists = layers.some(layer => 
-                  layer.shapeId === shape.id && 
-                  layer.pageId === currentPage._id
-                );
-                return layerExists;
-              })
-              .map((shape) => {
-                const scale = zoomLevel / 100;
-                let filledSvg;
-                try {
-                  filledSvg = applyFillsToSvgString(shape.svg, shape.fills);
-                  filledSvg = enhanceSvgVisibility(filledSvg);
-                } catch (error) {
-                  console.error('Error processing SVG:', error);
-                  filledSvg = createFallbackSvg();
-                }
-                
-                return (
-                  <div
-                    key={shape.id}
-                    className="shape-container"
-                    style={{
-                      position: 'absolute',
-                      left: `${shape.x * scale}px`,
-                      top: `${shape.y * scale}px`,
-                      pointerEvents: interactionStates.colorfill ? 'auto' : 'none',
-                      cursor: interactionStates.colorfill && activeColor ? 'pointer' : 'default',
-                      transform: `scale(${scale})`,
-                      transformOrigin: 'top left'
-                    }}
-                    onClick={(e) => handleShapeClick(e, shape.id)}
-                  >
-                    <div 
-                      dangerouslySetInnerHTML={{ __html: filledSvg }}
-                      style={{ 
-                        width: '100px',
-                        height: '100px',
-                        filter: 'drop-shadow(0px 2px 3px rgba(0,0,0,0.1))'
-                      }}
-                    />
-                  </div>
-                );
-              })}
-          </div>
-
-          {interactionStates.colorfill && 
-           selectedColors.length > 0 && 
-           layers.some(layer => layer.action === "colorfill" && layer.pageId === currentPage._id) && (
-            <div 
-              className="floating-color-toolbar"
-              style={{ 
-                position: 'absolute',
-                left: `${toolbarPosition.x}px`, 
-                top: `${toolbarPosition.y}px`,
-                zIndex: 1000,
-                padding: '12px 16px',
-                background: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                border: '2px solid rgba(255, 255, 255, 0.8)',
-                cursor: 'move',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseDown={handleToolbarMouseDown}
-            >
-              <div className="toolbar-colors" style={{ display: 'flex', gap: '10px' }}>
-                {selectedColors.map((color) => (
-                  <div 
-                    key={color}
-                    className={`toolbar-color ${activeColor === color ? 'active' : ''}`}
-                    style={{ 
-                      width: '36px', 
-                      height: '36px', 
-                      borderRadius: '50%', 
-                      backgroundColor: color,
-                      border: activeColor === color ? '3px solid #ffffff' : '2px solid rgba(255, 255, 255, 0.6)',
-                      cursor: 'pointer',
-                      boxShadow: activeColor === color ? 
-                        '0 0 0 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3)' : 
-                        '0 2px 8px rgba(0,0,0,0.1)',
-                      transform: activeColor === color ? 'scale(1.1)' : 'scale(1)',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => handleToolbarColorSelect(color)}
-                  />
-                ))}
-              </div>
-              {!activeColor && (
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: '#666', 
-                  marginTop: '8px', 
-                  textAlign: 'center',
-                  fontWeight: '500'
-                }}>
-                  Select a color to paint
-                </div>
-              )}
-            </div>
-          )}
-
+        <div className="models-overlay" style={{ pointerEvents: 'none' }}>
           {layers
-            .filter(layer => layer.action === "audio" && layer.properties.audioUrl)
-            .map(layer => (
-              <audio
-                key={layer._id}
-                id={`audio-${layer._id}`}
-                src={layer.properties.audioUrl}
-                style={{ display: 'none' }}
-              />
-            ))}
+            .filter(layer => 
+              layer.action === "model3d" && 
+              layer.properties.modelUrl &&
+              layer.pageId === currentPage._id
+            )
+            .map((layer) => {
+              const objectId = layer.objectId || `3d-${layer._id}`;
+              const effectiveState = getEffectiveLayerState(layer);
+              const position = effectiveState.positionOrigin;
+              const size = effectiveState.size;
+              const scale = zoomLevel / 100;
+              const isLocked = isLayerLockedByOther(layer._id);
+              const isMyLock = myLocks.has(layer._id);
+              
+              return (
+                <div
+                  key={objectId}
+                  className="model-container"
+                  style={{
+                    position: 'absolute',
+                    left: `${position.x * scale}px`,
+                    top: `${position.y * scale}px`,
+                    width: `${parseInt(size[0]) * scale}px`,
+                    height: `${parseInt(size[1]) * scale}px`,
+                    cursor: ((interactionStates.model3d || isModerator) && !isLocked) ? 'grab' : 'default',
+                    pointerEvents: ((interactionStates.model3d || isModerator) && !isLocked) ? 'all' : 'none',
+                    border: isLocked ? '3px solid #ff4757' : (isMyLock ? '3px solid #2ed573' : 'none'),
+                    borderRadius: '4px'
+                  }}
+                  ref={el => {
+                    if (el) modelContainersRef.current[objectId] = el;
+                  }}
+                  onMouseDown={(e) => handle3DMouseDown(e, objectId)}
+                />
+              );
+            })}
         </div>
+
+        <div className="shapes-overlay" style={{ pointerEvents: 'none' }}>
+          {canvasShapes
+            .filter(shape => {
+              const layerExists = layers.some(layer => 
+                layer.shapeId === shape.id && 
+                layer.pageId === currentPage._id
+              );
+              return layerExists;
+            })
+            .map((shape) => {
+              const scale = zoomLevel / 100;
+              let filledSvg;
+              try {
+                filledSvg = applyFillsToSvgString(shape.svg, shape.fills);
+                filledSvg = enhanceSvgVisibility(filledSvg);
+              } catch (error) {
+                console.error('Error processing SVG:', error);
+                filledSvg = createFallbackSvg();
+              }
+              
+              return (
+                <div
+                  key={shape.id}
+                  className="shape-container"
+                  style={{
+                    position: 'absolute',
+                    left: `${shape.x * scale}px`,
+                    top: `${shape.y * scale}px`,
+                    pointerEvents: (interactionStates.colorfill || isModerator) ? 'auto' : 'none',
+                    cursor: ((interactionStates.colorfill || isModerator) && activeColor) ? 'pointer' : 'default',
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left'
+                  }}
+                  onClick={(e) => handleShapeClick(e, shape.id)}
+                >
+                  <div 
+                    dangerouslySetInnerHTML={{ __html: filledSvg }}
+                    style={{ 
+                      width: '100px',
+                      height: '100px',
+                      filter: 'drop-shadow(0px 2px 3px rgba(0,0,0,0.1))'
+                    }}
+                  />
+                </div>
+              );
+            })}
+        </div>
+
+        {((interactionStates.colorfill || isModerator) && 
+         selectedColors.length > 0 && 
+         layers.some(layer => layer.action === "colorfill" && layer.pageId === currentPage._id)) && (
+          <div 
+            className="floating-color-toolbar"
+            style={{ 
+              position: 'absolute',
+              left: `${toolbarPosition.x}px`, 
+              top: `${toolbarPosition.y}px`,
+              zIndex: 1000,
+              padding: '12px 16px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '12px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              border: '2px solid rgba(255, 255, 255, 0.8)',
+              cursor: 'move',
+              backdropFilter: 'blur(10px)'
+            }}
+            onMouseDown={handleToolbarMouseDown}
+          >
+            <div className="toolbar-colors" style={{ display: 'flex', gap: '10px' }}>
+              {selectedColors.map((color) => (
+                <div 
+                  key={color}
+                  className={`toolbar-color ${activeColor === color ? 'active' : ''}`}
+                  style={{ 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '50%', 
+                    backgroundColor: color,
+                    border: activeColor === color ? '3px solid #ffffff' : '2px solid rgba(255, 255, 255, 0.6)',
+                    cursor: 'pointer',
+                    boxShadow: activeColor === color ? 
+                      '0 0 0 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3)' : 
+                      '0 2px 8px rgba(0,0,0,0.1)',
+                    transform: activeColor === color ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onClick={() => handleToolbarColorSelect(color)}
+                />
+              ))}
+            </div>
+            {!activeColor && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#666', 
+                marginTop: '8px', 
+                textAlign: 'center',
+                fontWeight: '500'
+              }}>
+                Select a color to paint
+              </div>
+            )}
+          </div>
+        )}
+
+        {layers
+          .filter(layer => layer.action === "audio" && layer.properties.audioUrl)
+          .map(layer => (
+            <audio
+              key={layer._id}
+              id={`audio-${layer._id}`}
+              src={layer.properties.audioUrl}
+              style={{ display: 'none' }}
+            />
+          ))}
       </div>
     </div>
-  );
+  </div>
+);
 });
 
 export default KidsCanvas;
