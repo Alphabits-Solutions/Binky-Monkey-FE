@@ -11,6 +11,7 @@ import ActivitySection from "./pages/ActivitySection";
 import Game from "./pages/Game";
 import "./assets/sass/homescreen.scss";
 import MemberAuth from "./pages/MemberAuth";
+import './App.css'
 
 
 import MeetingPage from "./pages/MeetingPage";
